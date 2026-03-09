@@ -22,6 +22,7 @@ dil = "dil.cli:main"
 
 [dependency-groups]
 dev = [
+  "pyyaml>=6.0.2",
   "pre-commit>=4.2.0",
   "pytest>=8.3.0",
   "ruff>=0.11.0",
@@ -30,14 +31,14 @@ dev = [
 ]
 
 [tool.ty.src]
-include = ["dil", "gen", "tests"]
+include = ["dil", "gen", "test"]
 respect-ignore-files = true
 
 [tool.hatch.build.targets.sdist]
 include = [
   "/dil",
   "/gen",
-  "/tests",
+  "/test",
   "/pyproject.toml",
 ]
 
@@ -48,7 +49,7 @@ packages = ["dil", "gen"]
 target-version = "py311"
 
 [tool.pytest.ini_options]
-testpaths = ["tests"]
-python_files = ["test.py"]
+testpaths = ["test"]
+python_files = ["harness.py"]
 cache_dir = "/tmp/dil-pytest-cache"
 addopts = "-v"

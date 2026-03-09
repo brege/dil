@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 import argparse
+import json
 import shutil
 import sys
 from pathlib import Path
@@ -25,6 +26,7 @@ def build_parser() -> argparse.ArgumentParser:
     parser.add_argument("-n", "--dry-run", action="store_true")
     parser.add_argument("-s", "--short", action="store_true")
     parser.add_argument("-y", "--yes", action="store_true")
+    parser.add_argument("--json", action="store_true")
     return parser
 
 
@@ -157,6 +159,66 @@ def print_short(matches: list[Match], root: Path, selected_types: list[str]) -> 
     print(f"To delete these items, run: dil -d -y {root}")
 
 
+def active_types(matches: list[Match], selected_types: list[str]) -> list[str]:
+    return [
+        name
+        for name in selected_types
+        if any(match.rule_type == name for match in matches)
+    ]
+
+
+def payload(
+    matches: list[Match], root: Path, selected_types: list[str], *, absolute: bool
+) -> dict[str, object]:
+    active = active_types(matches, selected_types)
+    grouped: dict[str, dict[str, tuple[int, int]]] = defaultdict(dict)
+    items: list[dict[str, object]] = []
+    total_size = 0
+    for match in matches:
+        path = match.path if absolute else match.path.relative_to(root)
+        suffix = "/" if match.kind == "dir" else ""
+        items.append(
+            {
+                "type": match.rule_type,
+                "rule": match.rule_value,
+                "path": f"{path}{suffix}",
+                "kind": match.kind,
+                "size": match.size_bytes,
+            }
+        )
+        total_size += match.size_bytes
+        count, size_bytes = grouped[match.rule_type].get(match.rule_value, (0, 0))
+        grouped[match.rule_type][match.rule_value] = (
+            count + 1,
+            size_bytes + match.size_bytes,
+        )
+
+    rules: list[dict[str, object]] = []
+    for type_name in active:
+        for rule_value, (count, size_bytes) in sorted(
+            grouped.get(type_name, {}).items()
+        ):
+            rules.append(
+                {
+                    "type": type_name,
+                    "rule": rule_value,
+                    "matches": count,
+                    "size": size_bytes,
+                }
+            )
+
+    return {
+        "root": str(root),
+        "types": active,
+        "matches": items,
+        "rules": rules,
+        "total": {
+            "matches": len(matches),
+            "size": total_size,
+        },
+    }
+
+
 def prune_matches(matches: list[Match]) -> None:
     for match in reversed(matches):
         if match.kind == "dir":
@@ -184,6 +246,8 @@ def main(argv: list[str] | None = None) -> int:
         raise SystemExit("error: --yes requires --delete")
     if args.short and not (args.delete and args.dry_run):
         raise SystemExit("error: --short requires --delete --dry-run")
+    if args.json and args.delete and not args.dry_run:
+        raise SystemExit("error: --json requires --dry-run when used with --delete")
 
     root = require_root(args.path)
     selected_types, rules = resolve_types(root, args.types)
@@ -193,6 +257,10 @@ def main(argv: list[str] | None = None) -> int:
         rules,
         with_size=not args.paths and not args.absolute_paths,
     )
+    if args.json:
+        absolute = args.absolute_paths or args.delete
+        print(json.dumps(payload(matches, root, selected_types, absolute=absolute)))
+        return 0
 
     if args.paths:
         print_paths(matches, root, selected_types)

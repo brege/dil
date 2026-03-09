@@ -1,0 +1,179 @@
+---
+projects:
+  aoife:
+    description: |-
+      Mixed frontend and backend project.
+      Exercises node, python, and react detection together.
+      Verifies that top-level litter like node_modules, dist, .ruff_cache,
+      .uv-cache, and backend __pycache__ are detected and deletable while
+      source files and manifests remain in place.
+    entries:
+      - dir: .ruff_cache
+      - file: .ruff_cache/cache.bin
+        bytes: 5
+      - dir: .uv-cache/archive-v0
+      - file: .uv-cache/archive-v0/wheel.txt
+        bytes: 7
+      - dir: backend/__pycache__
+      - file: backend/__pycache__/app.pyc
+        bytes: 11
+      - file: backend/app.py
+        text: "print('hi')\n"
+      - dir: node_modules/pkg/build
+      - file: node_modules/pkg/package.json
+        bytes: 13
+      - file: node_modules/pkg/build/app.js
+        bytes: 17
+      - dir: dist
+      - file: dist/app.js
+        bytes: 19
+      - file: package.json
+        text: "{}\n"
+      - file: app.tsx
+        text: "export const App = () => null;\n"
+      - file: README.md
+        text: "# aoife\n"
+    expect:
+      types: [node, python, react]
+      paths:
+        - .ruff_cache/
+        - .uv-cache/
+        - backend/__pycache__/
+        - dist/
+        - node_modules/
+      keep: [README.md, app.tsx, backend/app.py, package.json]
+      rules:
+        node:
+          node_modules:
+            matches: 1
+            size: 30
+        python:
+          .ruff_cache:
+            matches: 1
+            size: 5
+          .uv-cache:
+            matches: 1
+            size: 7
+          __pycache__:
+            matches: 1
+            size: 11
+        react:
+          dist:
+            matches: 1
+            size: 19
+      total:
+        matches: 5
+        size: 72
+  python:
+    description: |-
+      Pure python project.
+      Verifies python-only detection and matching for cache directories and
+      bytecode output without any frontend or mixed-project noise.
+      Confirms that source files and pyproject metadata are preserved.
+    entries:
+      - dir: .pytest_cache
+      - file: .pytest_cache/cache.bin
+        bytes: 3
+      - dir: .uv-cache/archive-v0
+      - file: .uv-cache/archive-v0/wheel.txt
+        bytes: 5
+      - dir: __pycache__
+      - file: __pycache__/main.pyc
+        bytes: 7
+      - file: app.py
+        text: "print('hi')\n"
+      - file: pyproject.toml
+        text: "[project]\nname = 'demo'\n"
+    expect:
+      types: [python]
+      paths: [.pytest_cache/, .uv-cache/, __pycache__/]
+      keep: [app.py, pyproject.toml]
+      rules:
+        python:
+          .pytest_cache:
+            matches: 1
+            size: 3
+          .uv-cache:
+            matches: 1
+            size: 5
+          __pycache__:
+            matches: 1
+            size: 7
+      total:
+        matches: 3
+        size: 15
+  latex:
+    description: |-
+      LaTeX project with ancestor-gated auxiliaries.
+      Verifies that aux and log files under a tree rooted by a .tex file are
+      matched, while sibling logs outside that ancestor chain are preserved.
+      Confirms the require-ancestor policy for latex cleanup.
+    entries:
+      - file: report/main.tex
+        text: "\\documentclass{article}\n"
+      - dir: report/build
+      - file: report/build/main.aux
+        bytes: 2
+      - file: report/build/main.log
+        bytes: 3
+      - dir: other
+      - file: other/random.log
+        bytes: 5
+    expect:
+      types: [latex]
+      paths: [report/build/main.aux, report/build/main.log]
+      keep: [other/random.log, report/main.tex]
+      rules:
+        latex:
+          '*.aux':
+            matches: 1
+            size: 2
+          '*.log':
+            matches: 1
+            size: 3
+      total:
+        matches: 2
+        size: 5
+  common:
+    description: |-
+      Cross-project litter fixture.
+      Verifies the common type catches editor swap files even when no language
+      or project-specific litter exists.
+      Confirms ordinary content files remain untouched.
+    entries:
+      - file: note.swp
+        bytes: 4
+      - file: note.md
+        text: "# note\n"
+    expect:
+      types: [common]
+      paths: [note.swp]
+      keep: [note.md]
+      rules:
+        common:
+          '*.swp':
+            matches: 1
+            size: 4
+      total:
+        matches: 1
+        size: 4
+  docs:
+    description: |-
+      Non-project documentation tree.
+      Verifies that markdown-only content does not trigger any dil-supported
+      project type or litter rule.
+      Confirms that dry runs, absolute and relative path views, and deletion
+      checks all report an empty result without touching files.
+    entries:
+      - file: README.md
+        text: "# notes\n"
+      - file: docs/guide.md
+        text: "nothing to prune\n"
+    expect:
+      types: []
+      paths: []
+      keep: [README.md, docs/guide.md]
+      rules: {}
+      total:
+        matches: 0
+        size: 0
