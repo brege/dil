@@ -4,26 +4,45 @@ import argparse
 import shutil
 import sys
 from pathlib import Path
+from collections import defaultdict
+
+from rich.console import Console
 
 from .config import TypeRules, load_rules
-from .engine import Match, find_matches, summarize
+from .engine import Match, detect_types, find_matches
+from . import ui
 
 
 def build_parser() -> argparse.ArgumentParser:
     parser = argparse.ArgumentParser(
         prog="dil", description="Detect and prune disposable project litter"
     )
-    subparsers = parser.add_subparsers(dest="command", required=True)
+    subparsers = parser.add_subparsers(dest="command")
 
-    for command in ("scan", "prune", "report"):
-        subparser = subparsers.add_parser(command)
-        subparser.add_argument("path", nargs="?", default=".")
-        subparser.add_argument("--type", dest="types", action="append", required=True)
-        subparser.add_argument("--pretty", action="store_true")
-        subparser.add_argument("-f", "--force", action="store_true")
-        subparser.add_argument("-n", "--dry-run", action="store_true")
+    scan = subparsers.add_parser("scan")
+    scan.add_argument("path", nargs="?", default=".")
+    scan.add_argument("--type", dest="types", action="append")
+    scan.add_argument("-c", "--compact", action="store_true")
+
+    prune = subparsers.add_parser("prune")
+    prune.add_argument("path", nargs="?", default=".")
+    prune.add_argument("--type", dest="types", action="append", required=True)
+    prune.add_argument("--pretty", action="store_true")
+    prune.add_argument("-f", "--force", action="store_true")
+    prune.add_argument("-n", "--dry-run", action="store_true")
 
     return parser
+
+
+def _overview_path(argv: list[str] | None) -> str | None:
+    if not argv:
+        return "."
+    first = argv[0]
+    if first in {"scan", "prune", "-h", "--help"}:
+        return None
+    if first.startswith("-"):
+        return None
+    return first
 
 
 def flatten_types(values: list[str]) -> list[str]:
@@ -43,9 +62,11 @@ def require_root(path_value: str) -> Path:
 
 
 def resolve_types(
-    root: Path, raw_types: list[str]
+    root: Path, raw_types: list[str] | None
 ) -> tuple[list[str], dict[str, TypeRules]]:
     rules = load_rules(root)
+    if not raw_types:
+        return list(detect_types(root, rules)), rules
     selected = flatten_types(raw_types)
     unsupported = [name for name in selected if name not in rules]
     if unsupported:
@@ -54,53 +75,82 @@ def resolve_types(
 
 
 def print_scan(
-    matches: list[Match], root: Path, selected_types: list[str], pretty: bool
+    matches: list[Match], root: Path, selected_types: list[str], compact: bool
 ) -> None:
-    type_label = "|".join(selected_types)
-    if pretty:
-        print(f"Skip analysis for type '{type_label}' in directory: {root}")
-        print("Dry run mode: no files will be deleted")
-        print()
-        print(f"Project directory: {root}")
-        if matches:
-            print("  WOULD DELETE:")
-            for match in matches:
-                suffix = "/" if match.kind == "dir" else ""
-                print(f"    {match.path}{suffix}")
-        else:
-            print("  No junk files found.")
-        print()
-        print("Dry run complete: no files deleted")
+    if compact:
+        grouped: dict[str, dict[str, tuple[int, int]]] = defaultdict(dict)
+        for match in matches:
+            count, size_bytes = grouped[match.rule_type].get(match.rule_value, (0, 0))
+            grouped[match.rule_type][match.rule_value] = (
+                count + 1,
+                size_bytes + match.size_bytes,
+            )
+
+        rows: list[ui.LitterRow] = []
+        for type_name in selected_types:
+            for rule_value, (count, size_bytes) in sorted(
+                grouped.get(type_name, {}).items()
+            ):
+                rows.append(
+                    ui.LitterRow(
+                        type=type_name,
+                        rule=rule_value,
+                        matches=count,
+                        size=size_bytes,
+                    )
+                )
+        ui.litter(Console(), rows)
         return
 
-    for match in matches:
-        suffix = "/" if match.kind == "dir" else ""
-        print(f"{match.path}{suffix}")
+    rows: list[ui.ScanRow] = []
+    for type_name in selected_types:
+        for match in matches:
+            if match.rule_type != type_name:
+                continue
+            suffix = "/" if match.kind == "dir" else ""
+            rows.append(
+                ui.ScanRow(
+                    type=type_name,
+                    rule=match.rule_value,
+                    path=f"{match.path.relative_to(root).as_posix()}{suffix}",
+                )
+            )
+
+    ui.scan(Console(), rows)
 
 
-def print_report(root: Path, matches: list[Match], selected_types: list[str]) -> None:
-    summary = summarize(root, matches)
-    grouped: dict[tuple[str, str], tuple[int, int]] = {}
-    for match in matches:
-        key = (match.rule_type, match.rule_value)
-        count, size_bytes = grouped.get(key, (0, 0))
-        grouped[key] = (count + 1, size_bytes + match.size_bytes)
-
-    print("Litter Summary")
-    print("--------------")
-    print(f"{'Type':12} {'Rule':24} {'Matches':>7} {'Bytes':>12}")
-    for (rule_type, rule_value), (count, size_bytes) in sorted(grouped.items()):
-        print(f"{rule_type:12} {rule_value:24} {count:7d} {size_bytes:12d}")
+def print_prune(matches: list[Match], root: Path, selected_types: list[str]) -> None:
+    type_label = "|".join(selected_types)
+    print(f"Skip analysis for type '{type_label}' in directory: {root}")
+    print("Dry run mode: no files will be deleted")
     print()
-    print("Project Summary")
-    print("---------------")
-    print(f"Types: {', '.join(selected_types)}")
-    print(f"Total files: {summary.total_files}")
-    print(f"Total dirs: {summary.total_dirs}")
-    print(f"Total bytes: {summary.total_bytes}")
-    print(f"Clean files: {summary.clean_files}")
-    print(f"Clean dirs: {summary.clean_dirs}")
-    print(f"Clean bytes: {summary.clean_bytes}")
+    print(f"Project directory: {root}")
+    if matches:
+        print("  WOULD DELETE:")
+        for match in matches:
+            suffix = "/" if match.kind == "dir" else ""
+            print(f"    {match.path}{suffix}")
+    else:
+        print("  No junk files found.")
+    print()
+    print("Dry run complete: no files deleted")
+
+
+def print_overview(root: Path, rules: dict[str, TypeRules]) -> None:
+    console = Console()
+    detected = detect_types(root, rules)
+    rows: list[ui.OverviewRow] = []
+    for name in detected:
+        matches = find_matches(root, [name], rules)
+        size_bytes = sum(match.size_bytes for match in matches)
+        rows.append(
+            ui.OverviewRow(
+                type=name,
+                matches=len(matches),
+                size=size_bytes,
+            )
+        )
+    ui.overview(console, str(root), rows)
 
 
 def prune_matches(matches: list[Match]) -> None:
@@ -112,23 +162,26 @@ def prune_matches(matches: list[Match]) -> None:
 
 
 def main(argv: list[str] | None = None) -> int:
+    argsv = sys.argv[1:] if argv is None else argv
+    path_value = _overview_path(argsv)
+    if path_value is not None:
+        root = require_root(path_value)
+        print_overview(root, load_rules(root))
+        return 0
+
     parser = build_parser()
-    args = parser.parse_args(argv)
+    args = parser.parse_args(argsv)
 
     root = require_root(args.path)
     selected_types, rules = resolve_types(root, args.types)
     matches = find_matches(root, selected_types, rules)
 
     if args.command == "scan":
-        print_scan(matches, root, selected_types, args.pretty)
-        return 0
-
-    if args.command == "report":
-        print_report(root, matches, selected_types)
+        print_scan(matches, root, selected_types, args.compact)
         return 0
 
     if not args.force:
-        print_scan(matches, root, selected_types, pretty=True)
+        print_prune(matches, root, selected_types)
         print()
         print("Refusing to delete without --force.")
         return 0

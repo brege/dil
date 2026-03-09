@@ -7,6 +7,7 @@ paths = []
 suffix = [".cabal"]
 
 [cargo]
+priority = 0
 dirs = [
     "target",
     ".xwin-cache",
@@ -140,6 +141,7 @@ paths = []
 suffix = [".ipynb"]
 
 [latex]
+require-ancestor = true
 dirs = ["_minted-*"]
 files = [
     "*.aux",
@@ -172,6 +174,7 @@ paths = []
 suffix = [".java"]
 
 [node]
+priority = 0
 dirs = [
     "node_modules",
     ".angular",
@@ -226,6 +229,7 @@ paths = [
 suffix = [".dart"]
 
 [python]
+priority = 0
 dirs = [
     ".mypy_cache",
     ".nox",
@@ -239,7 +243,6 @@ dirs = [
     "env",
     ".env",
     ".uv-cache",
-    "dist",
     "build",
 ]
 files = ["*.pyc"]

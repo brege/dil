@@ -8,6 +8,7 @@ import tomllib
 import pytest
 
 from gen import kondo
+from gen.policy import load as load_policy
 from gen import rules
 from gen import tokei
 
@@ -16,11 +17,11 @@ ROOT = Path(__file__).resolve().parents[1]
 PYTHON = shutil.which("python3") or "python3"
 
 
-def run(*args: str) -> subprocess.CompletedProcess[str]:
+def run(*args: str, cwd: Path | None = None) -> subprocess.CompletedProcess[str]:
     command = [PYTHON, "-m", "dil.cli", *args]
     return subprocess.run(
         command,
-        cwd=ROOT,
+        cwd=cwd or ROOT,
         text=True,
         capture_output=True,
         env={"PYTHONPATH": str(ROOT)},
@@ -44,11 +45,48 @@ def repo(tmp_path: Path) -> Path:
 
 
 def test_scan(repo: Path) -> None:
-    result = run("scan", "--pretty", "--type", "python", str(repo))
+    result = run("scan", str(repo))
     assert result.returncode == 0
-    assert "WOULD DELETE:" in result.stdout
-    assert "__pycache__/" in result.stdout
+    assert "Type" in result.stdout
+    assert "Rule" in result.stdout
+    assert "Path" in result.stdout
+    assert "src/app.py" not in result.stdout
     assert ".pytest_cache/" in result.stdout
+    assert "dil/__pycache__/" not in result.stdout
+
+
+def test_scan_compact(repo: Path) -> None:
+    result = run("scan", "--compact", str(repo))
+    assert result.returncode == 0
+    assert "Type" in result.stdout
+    assert "Matches" in result.stdout
+    assert "Size" in result.stdout
+    assert "__pycache__" in result.stdout
+
+
+def test_overview(repo: Path) -> None:
+    result = run(cwd=repo)
+    assert result.returncode == 0
+    assert "python" in result.stdout
+    assert "pixi" not in result.stdout
+    assert "common" in result.stdout
+
+
+def test_overview_path(repo: Path) -> None:
+    result = run(str(repo))
+    assert result.returncode == 0
+    assert str(repo) in result.stdout
+    assert "python" in result.stdout
+
+
+def test_overview_cargo(tmp_path: Path) -> None:
+    assert str(tmp_path).startswith("/tmp/")
+    repo = tmp_path / "cargo"
+    repo.mkdir()
+    (repo / "main.rs").write_text("fn main() {}\n")
+    result = run(cwd=repo)
+    assert result.returncode == 0
+    assert "cargo" in result.stdout
 
 
 def test_guard(repo: Path) -> None:
@@ -66,14 +104,6 @@ def test_prune(repo: Path) -> None:
     assert not (repo / ".uv-cache").exists()
 
 
-def test_report(repo: Path) -> None:
-    result = run("report", "--type", "python", str(repo))
-    assert result.returncode == 0
-    assert "Litter Summary" in result.stdout
-    assert "Project Summary" in result.stdout
-    assert "python" in result.stdout
-
-
 def test_union(repo: Path) -> None:
     node_modules = repo / "node_modules"
     node_modules.mkdir()
@@ -81,6 +111,15 @@ def test_union(repo: Path) -> None:
     result = run("scan", "--type", "python|node", str(repo))
     assert result.returncode == 0
     assert "node_modules/" in result.stdout
+
+
+def test_stopword(repo: Path) -> None:
+    build = repo / "node_modules" / "pkg" / "build"
+    build.mkdir(parents=True)
+    (build / "artifact.js").write_text("x\n")
+    result = run("scan", "--type", "python|node", str(repo))
+    assert result.returncode == 0
+    assert "node_modules/pkg/build/" not in result.stdout
 
 
 def test_path(repo: Path) -> None:
@@ -100,12 +139,44 @@ def test_common(repo: Path) -> None:
     assert "note.swp" in result.stdout
 
 
+def test_latex_ancestor(tmp_path: Path) -> None:
+    assert str(tmp_path).startswith("/tmp/")
+    repo = tmp_path / "latex"
+    repo.mkdir()
+    (repo / "project").mkdir()
+    (repo / "project" / "foo.tex").write_text("\\documentclass{article}\n")
+    (repo / "project" / "build").mkdir()
+    (repo / "project" / "build" / "foo.log").write_text("latex\n")
+    (repo / "other").mkdir()
+    (repo / "other" / "foo.log").write_text("app\n")
+
+    result = run("scan", "--type", "latex", str(repo))
+    assert result.returncode == 0
+    assert "project/build/foo.log" in result.stdout
+    assert "other/foo.log" not in result.stdout
+
+
+def test_shebang(repo: Path) -> None:
+    tool = repo / "tool"
+    tool.write_text("#!/usr/bin/env python3\nprint('hi')\n")
+    result = run(cwd=repo)
+    assert result.returncode == 0
+    assert "python" in result.stdout
+
+
 def test_rules(tmp_path: Path) -> None:
     rules.ensure()
     litter = kondo.merge(kondo.parse(kondo.SOURCE.read_text()), kondo.POLICY)
     detect = tokei.merge(tokei.parse(tokei.SOURCE), tokei.POLICY)
-    data = tomllib.loads(rules.render(rules.merge(litter, detect)))
+    policy = load_policy(rules.POLICY)
+    priority = {name: rule.priority for name, rule in policy.items()}
+    require_ancestor = {name: rule.require_ancestor for name, rule in policy.items()}
+    data = tomllib.loads(
+        rules.render(rules.merge(litter, detect), priority, require_ancestor)
+    )
 
+    assert data["python"]["priority"] == 0
+    assert data["latex"]["require-ancestor"] is True
     assert "__pycache__" in data["python"]["dirs"]
     assert ".pytest_cache" in data["python"]["dirs"]
     assert "*.pyc" in data["python"]["files"]

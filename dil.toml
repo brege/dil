@@ -3,6 +3,7 @@ kondo = ["cabal"]
 tokei = ["Cabal"]
 
 [type.cargo]
+priority = 0
 kondo = ["cargo"]
 tokei = ["Rust"]
 
@@ -60,6 +61,7 @@ kondo = ["jupyter"]
 tokei = ["Jupyter"]
 
 [type.latex]
+require-ancestor = true
 kondo = []
 tokei = ["Tex"]
 
@@ -86,6 +88,7 @@ kondo = ["maven"]
 tokei = ["Java"]
 
 [type.node]
+priority = 0
 kondo = ["node"]
 tokei = ["JavaScript", "TypeScript"]
 
@@ -105,6 +108,7 @@ kondo = ["pub"]
 tokei = ["Dart"]
 
 [type.python]
+priority = 0
 kondo = ["python"]
 tokei = ["Python"]
 
@@ -115,7 +119,6 @@ dirs = [
   "env",
   ".env",
   ".uv-cache",
-  "dist",
   "build",
 ]
 files = ["*.pyc"]

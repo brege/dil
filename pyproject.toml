@@ -6,7 +6,15 @@ build-backend = "hatchling.build"
 name = "dil"
 version = "0.1"
 description = "Detect and prune disposable project litter"
+readme = "README.md"
+license = { file = "LICENSE" }
+authors = [
+  { name = "Wyatt Brege", email = "wyatt@brege.org" }
+]
 requires-python = ">=3.11"
+dependencies = [
+  'rich>=13.5.2',
+]
 
 [project.scripts]
 dil = "dil.cli:main"

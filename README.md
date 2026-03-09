@@ -42,12 +42,12 @@ Here's what's available in the world today.
 
 2. [Tokei](https://github.com/XAMPPRocky/tokei) solves a different problem. Its [`languages.json`](https://github.com/XAMPPRocky/tokei/blob/master/languages.json) is a rich language database with extensions, filenames, env names, and shebangs. That makes it a better upstream for detector metadata than for prune rules.
 
-3. [github/gitignore](https://github.com/github/gitignore) is broader than both, but it mixes true build artifacts with editor litter, machine-local files, and user-generated files that are often ignored but not safely disposable. For `dil`, ignored is not the same thing as removable.
+3. [github/gitignore](https://github.com/github/gitignore) is broader than both, but it mixes true build artifacts with editor litter, machine-local files, and user-generated files that are often ignored but not safely disposable. For **dil**, ignored is not the same thing as removable.
 
 ### Approach
 
-- Kondo is not broad enough for dil (LaTeX, React, etc are not in Kondo's `lib.rs`)
-- Tokei is fantastic as a detector for filetypes and shebangs (`languages.json`)
+- Kondo is not broad enough for **dil**. LaTeX, React, etc are not in Kondo's `lib.rs`.
+- Tokei's `languages.json` is fantastic as a detector for filetypes and shebangs
 - github/gitignore doesn't distinguish between disposable and user generated data.
 
 Therefore, the approach is to map the overlap of Tokei's `languages.json` and Kondo's `lib.rs`, resolve the conflicts, map the keys, and supplement with a manually curated policy file: `dil.toml`.

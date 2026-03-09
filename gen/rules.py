@@ -12,6 +12,7 @@ from gen import tokei
 from gen.policy import DETECT
 from gen.policy import LITTER
 from gen.policy import SOURCE as POLICY
+from gen.policy import load
 
 
 ROOT = Path(__file__).resolve().parent.parent
@@ -52,10 +53,18 @@ def array(items: list[str]) -> Array:
     return data
 
 
-def render(rules: dict[str, dict[str, list[str]]]) -> str:
+def render(
+    rules: dict[str, dict[str, list[str]]],
+    priority: dict[str, int],
+    require_ancestor: dict[str, bool],
+) -> str:
     doc = tomlkit.document()
     for name, rule in rules.items():
         table = tomlkit.table()
+        if priority.get(name, 99) != 99:
+            table.add("priority", priority[name])
+        if require_ancestor.get(name, False):
+            table.add("require-ancestor", True)
         table.add("dirs", array(rule["dirs"]))
         table.add("files", array(rule["files"]))
         table.add("paths", array(rule["paths"]))
@@ -105,7 +114,10 @@ def main() -> int:
     refreshed = ensure()
     litter = kondo.merge(kondo.parse(args.kondo.read_text()), args.policy)
     detect = tokei.merge(tokei.parse(args.tokei), args.policy)
-    text = render(merge(litter, detect))
+    policy = load(args.policy)
+    priority = {name: rule.priority for name, rule in policy.items()}
+    require_ancestor = {name: rule.require_ancestor for name, rule in policy.items()}
+    text = render(merge(litter, detect), priority, require_ancestor)
     delta = diff(TARGET, text)
     if not delta:
         if refreshed:

@@ -19,6 +19,8 @@ FIELDS = LITTER + DETECT
 
 @dataclass(frozen=True)
 class Type:
+    priority: int
+    require_ancestor: bool
     kondo: tuple[str, ...]
     tokei: tuple[str, ...]
     add: dict[str, tuple[str, ...]]
@@ -33,6 +35,22 @@ def _list(value: object, source: str, field: str) -> tuple[str, ...]:
     if not isinstance(value, list) or any(not isinstance(item, str) for item in value):
         raise SystemExit(f"error: {source}: {field} must be a list of strings")
     return tuple(cast(list[str], value))
+
+
+def _priority(value: object, source: str) -> int:
+    if value is None:
+        return 99
+    if not isinstance(value, int):
+        raise SystemExit(f"error: {source}: priority must be an integer")
+    return value
+
+
+def _require_ancestor(value: object, source: str) -> bool:
+    if value is None:
+        return False
+    if not isinstance(value, bool):
+        raise SystemExit(f"error: {source}: require-ancestor must be a boolean")
+    return value
 
 
 def _table(value: object, source: str) -> dict[str, tuple[str, ...]]:
@@ -58,6 +76,10 @@ def load(path: Path = SOURCE) -> dict[str, Type]:
         if not isinstance(value, dict):
             raise SystemExit(f"error: invalid type entry in {path}: {name}")
         rules[name] = Type(
+            priority=_priority(value.get("priority"), f"{path}:{name}"),
+            require_ancestor=_require_ancestor(
+                value.get("require-ancestor"), f"{path}:{name}"
+            ),
             kondo=_list(value.get("kondo", []), f"{path}:{name}", "kondo"),
             tokei=_list(value.get("tokei", []), f"{path}:{name}", "tokei"),
             add=_table(value.get("add", {}), f"{path}:{name}.add"),
