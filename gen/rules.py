@@ -7,6 +7,7 @@ import tomlkit
 from tomlkit.items import Array
 
 from gen import kondo
+from gen import refs
 from gen import tokei
 from gen.policy import DETECT
 from gen.policy import LITTER
@@ -88,16 +89,34 @@ def diff(path: Path, text: str) -> str:
     return "".join(lines)
 
 
+def ensure() -> bool:
+    missing: list[str] = []
+    if not KONDO.is_file():
+        missing.append("kondo")
+    if not TOKEI.is_file():
+        missing.append("tokei")
+    if not missing:
+        return False
+    return refs.sync(missing)
+
+
 def main() -> int:
     args = build().parse_args()
+    refreshed = ensure()
     litter = kondo.merge(kondo.parse(args.kondo.read_text()), args.policy)
     detect = tokei.merge(tokei.parse(args.tokei), args.policy)
     text = render(merge(litter, detect))
     delta = diff(TARGET, text)
     if not delta:
+        if refreshed:
+            print("refreshed data cache")
+        print(f"{TARGET.relative_to(ROOT)} unchanged")
         return 0
     TARGET.parent.mkdir(parents=True, exist_ok=True)
     TARGET.write_text(text)
+    if refreshed:
+        print("refreshed data cache")
+    print(f"updated {TARGET.relative_to(ROOT)}")
     sys.stdout.write(delta)
     return 0
 

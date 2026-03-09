@@ -101,6 +101,7 @@ def test_common(repo: Path) -> None:
 
 
 def test_rules(tmp_path: Path) -> None:
+    rules.ensure()
     litter = kondo.merge(kondo.parse(kondo.SOURCE.read_text()), kondo.POLICY)
     detect = tokei.merge(tokei.parse(tokei.SOURCE), tokei.POLICY)
     data = tomllib.loads(rules.render(rules.merge(litter, detect)))
@@ -114,6 +115,7 @@ def test_rules(tmp_path: Path) -> None:
 
 
 def test_detect(tmp_path: Path) -> None:
+    rules.ensure()
     data = tomllib.loads(
         tokei.render(tokei.merge(tokei.parse(tokei.SOURCE), tokei.POLICY))
     )
@@ -123,3 +125,21 @@ def test_detect(tmp_path: Path) -> None:
     assert ".tex" in data["latex"]["detect"]["suffix"]
     assert ".jsx" in data["react"]["detect"]["suffix"]
     assert "node" in data["node"]["detect"]["env"]
+
+
+def test_ensure(monkeypatch: pytest.MonkeyPatch, tmp_path: Path) -> None:
+    monkeypatch.setattr(rules, "KONDO", tmp_path / "kondo" / "lib.rs")
+    monkeypatch.setattr(rules, "TOKEI", tmp_path / "tokei" / "languages.json")
+
+    calls: list[list[str]] = []
+
+    def fake_sync(names: list[str] | None = None, check: bool = False) -> bool:
+        assert check is False
+        assert names is not None
+        calls.append(names)
+        return True
+
+    monkeypatch.setattr(rules.refs, "sync", fake_sync)
+
+    assert rules.ensure() is True
+    assert calls == [["kondo", "tokei"]]

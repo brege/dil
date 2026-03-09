@@ -41,19 +41,18 @@ def save(state: dict[str, dict[str, str]]) -> None:
     STATE.write_text(json.dumps(state, indent=2, sort_keys=True) + "\n")
 
 
-def main() -> int:
-    args = build().parse_args()
-    names = args.names or sorted(SOURCES)
+def sync(names: list[str] | None = None, check: bool = False) -> bool:
+    chosen = names or sorted(SOURCES)
     state = load()
     changed = False
 
-    for name in names:
+    for name in chosen:
         url, path = SOURCES[name]
         text = read(url)
         current = path.read_text() if path.is_file() else ""
         fresh = current != text
         changed = changed or fresh
-        if fresh and not args.check:
+        if fresh and not check:
             path.parent.mkdir(parents=True, exist_ok=True)
             path.write_text(text)
         state[name] = {
@@ -63,9 +62,15 @@ def main() -> int:
         }
         print(f"{name}: {'changed' if fresh else 'unchanged'}")
 
-    if not args.check:
+    if not check:
         save(state)
 
+    return changed
+
+
+def main() -> int:
+    args = build().parse_args()
+    changed = sync(args.names, args.check)
     return 1 if args.check and changed else 0
 
 
