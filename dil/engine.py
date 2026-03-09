@@ -44,7 +44,7 @@ def _path_matches(relative_path: str, pattern: str) -> bool:
 
 def _directory_size(path: Path) -> int:
     total = 0
-    stack = [path]
+    stack = [path.as_posix()]
     while stack:
         current = stack.pop()
         try:
@@ -52,7 +52,7 @@ def _directory_size(path: Path) -> int:
                 for entry in entries:
                     try:
                         if entry.is_dir(follow_symlinks=False):
-                            stack.append(Path(entry.path))
+                            stack.append(entry.path)
                         elif entry.is_file(follow_symlinks=False):
                             total += entry.stat(follow_symlinks=False).st_size
                     except FileNotFoundError:
@@ -92,10 +92,12 @@ def _has_ancestor_suffix(
 
 def _read_head(path: Path) -> str:
     try:
-        with path.open("r", encoding="utf-8", errors="ignore") as handle:
-            return handle.readline().strip()
+        with path.open("rb") as handle:
+            head = handle.read(128)
     except OSError:
         return ""
+    line = head.splitlines()[0] if head else b""
+    return line.decode("utf-8", errors="ignore").strip()
 
 
 def _signature(
@@ -112,6 +114,19 @@ def _signature(
     )
 
 
+def _detect_stopword(name: str, relative: str, rules: dict[str, TypeRules]) -> bool:
+    for rule in rules.values():
+        if rule.priority != 0:
+            continue
+        for pattern in rule.paths:
+            if _path_matches(relative, pattern):
+                return True
+        for pattern in rule.dirs:
+            if fnmatch.fnmatchcase(name, pattern):
+                return True
+    return False
+
+
 def detect_types(root: Path, rules: dict[str, TypeRules]) -> dict[str, Detect]:
     counts: dict[str, dict[str, int]] = {}
     signatures: dict[
@@ -124,6 +139,10 @@ def detect_types(root: Path, rules: dict[str, TypeRules]) -> dict[str, Detect]:
         ],
         list[str],
     ] = {}
+    suffix_map: dict[str, list[str]] = {}
+    file_map: dict[str, list[str]] = {}
+    name_map: dict[str, list[str]] = {}
+    head_types: list[str] = []
 
     for name, rule in rules.items():
         if name == "common":
@@ -136,54 +155,65 @@ def detect_types(root: Path, rules: dict[str, TypeRules]) -> dict[str, Detect]:
             "shebang": 0,
         }
         signatures.setdefault(_signature(rule), []).append(name)
+        for suffix in rule.detect_suffix:
+            suffix_map.setdefault(suffix.casefold(), []).append(name)
+        for item in rule.detect_files:
+            file_map.setdefault(item, []).append(name)
+        for item in rule.detect_names:
+            name_map.setdefault(item.casefold(), []).append(name)
+        if rule.detect_env or rule.detect_shebang:
+            head_types.append(name)
 
-    stack = [root]
+    stack = [(root, "")]
     while stack:
-        current = stack.pop()
+        current, base = stack.pop()
         try:
             with os.scandir(current) as entries:
                 for entry in entries:
                     if entry.is_dir(follow_symlinks=False):
-                        stack.append(Path(entry.path))
+                        if entry.name == ".git":
+                            continue
+                        relative = f"{base}/{entry.name}" if base else entry.name
+                        if not _detect_stopword(entry.name, relative, rules):
+                            stack.append((Path(entry.path), relative))
                         continue
                     if not entry.is_file(follow_symlinks=False):
                         continue
 
-                    first = ""
                     suffixes = {part.casefold() for part in Path(entry.name).suffixes}
                     lowered = entry.name.casefold()
-                    for name, rule in rules.items():
-                        if name == "common":
-                            continue
+                    for name in file_map.get(entry.name, []):
+                        counts[name]["files"] += 1
+
+                    for name in name_map.get(lowered, []):
+                        counts[name]["names"] += 1
+
+                    seen_suffix: set[str] = set()
+                    for suffix in suffixes:
+                        for name in suffix_map.get(suffix, []):
+                            if name in seen_suffix:
+                                continue
+                            counts[name]["suffix"] += 1
+                            seen_suffix.add(name)
+
+                    if suffixes or not head_types:
+                        continue
+
+                    first = _read_head(Path(entry.path))
+                    if not first:
+                        continue
+                    for name in head_types:
+                        rule = rules[name]
                         current_counts = counts[name]
-
-                        if rule.detect_names and lowered in {
-                            item.casefold() for item in rule.detect_names
-                        }:
-                            current_counts["names"] += 1
-
-                        if rule.detect_files and entry.name in rule.detect_files:
-                            current_counts["files"] += 1
-
-                        if rule.detect_suffix and any(
-                            suffix.casefold() in suffixes
-                            for suffix in rule.detect_suffix
-                        ):
-                            current_counts["suffix"] += 1
-
-                        if rule.detect_env or rule.detect_shebang:
-                            if not first:
-                                first = _read_head(Path(entry.path))
-                            if first:
-                                if rule.detect_shebang and first in rule.detect_shebang:
-                                    current_counts["shebang"] += 1
-                                if rule.detect_env and first.startswith("#!"):
-                                    for value in rule.detect_env:
-                                        if f"env {value}" in first or first.endswith(
-                                            f"/{value}"
-                                        ):
-                                            current_counts["env"] += 1
-                                            break
+                        if rule.detect_shebang and first in rule.detect_shebang:
+                            current_counts["shebang"] += 1
+                        if rule.detect_env and first.startswith("#!"):
+                            for value in rule.detect_env:
+                                if f"env {value}" in first or first.endswith(
+                                    f"/{value}"
+                                ):
+                                    current_counts["env"] += 1
+                                    break
         except FileNotFoundError:
             continue
 
@@ -218,18 +248,24 @@ def detect_types(root: Path, rules: dict[str, TypeRules]) -> dict[str, Detect]:
 
 
 def find_matches(
-    root: Path, selected_types: list[str], available_rules: dict[str, TypeRules]
+    root: Path,
+    selected_types: list[str],
+    available_rules: dict[str, TypeRules],
+    with_size: bool = False,
 ) -> list[Match]:
     matches: list[Match] = []
-    seen: set[Path] = set()
+    seen: set[str] = set()
     ancestor_cache: dict[tuple[str, Path], bool] = {}
 
     def add_match(path: Path, kind: str, rule_type: str, rule_value: str) -> None:
-        resolved = path.resolve()
-        if resolved in seen:
+        key = path.as_posix()
+        if key in seen:
             return
-        seen.add(resolved)
-        size_bytes = _directory_size(path) if kind == "dir" else path.stat().st_size
+        seen.add(key)
+        if with_size:
+            size_bytes = _directory_size(path) if kind == "dir" else path.stat().st_size
+        else:
+            size_bytes = 0
         matches.append(
             Match(
                 path=path,
@@ -240,13 +276,13 @@ def find_matches(
             )
         )
 
-    def allowed(path: Path, type_name: str) -> bool:
+    def allowed(path: Path, type_name: str, is_dir: bool) -> bool:
         rule = available_rules[type_name]
         if not rule.require_ancestor:
             return True
         if not rule.detect_suffix:
             return True
-        current = path if path.is_dir() else path.parent
+        current = path if is_dir else path.parent
         key = (type_name, current)
         if key not in ancestor_cache:
             ancestor_cache[key] = _has_ancestor_suffix(
@@ -258,30 +294,34 @@ def find_matches(
         for type_name in selected_types:
             rules = available_rules[type_name]
             for pattern in rules.paths:
-                if _path_matches(relative, pattern) and allowed(path, type_name):
+                if _path_matches(relative, pattern) and allowed(path, type_name, True):
                     return True
             for pattern in rules.dirs:
-                if fnmatch.fnmatchcase(path.name, pattern) and allowed(path, type_name):
+                if fnmatch.fnmatchcase(path.name, pattern) and allowed(
+                    path, type_name, True
+                ):
                     return True
         return False
 
-    stack = [root]
+    stack = [(root, "")]
     while stack:
-        current = stack.pop()
+        current, base = stack.pop()
         try:
             with os.scandir(current) as entries:
                 for entry in entries:
-                    entry_path = Path(entry.path)
-                    relative = entry_path.relative_to(root).as_posix()
+                    relative = f"{base}/{entry.name}" if base else entry.name
                     pruned = False
 
                     if entry.is_dir(follow_symlinks=False):
+                        if entry.name == ".git":
+                            continue
+                        entry_path = Path(entry.path)
                         blocked = stopword(entry_path, relative)
                         for type_name in selected_types:
                             rules = available_rules[type_name]
                             for pattern in rules.paths:
                                 if _path_matches(relative, pattern):
-                                    if not allowed(entry_path, type_name):
+                                    if not allowed(entry_path, type_name, True):
                                         continue
                                     add_match(entry_path, "dir", type_name, pattern)
                                     pruned = True
@@ -290,7 +330,7 @@ def find_matches(
                                 break
                             for pattern in rules.dirs:
                                 if fnmatch.fnmatchcase(entry.name, pattern):
-                                    if not allowed(entry_path, type_name):
+                                    if not allowed(entry_path, type_name, True):
                                         continue
                                     add_match(entry_path, "dir", type_name, pattern)
                                     pruned = True
@@ -299,7 +339,7 @@ def find_matches(
                                 break
 
                         if not pruned and not blocked:
-                            stack.append(entry_path)
+                            stack.append((entry_path, relative))
                         continue
 
                     if not entry.is_file(follow_symlinks=False):
@@ -310,7 +350,8 @@ def find_matches(
                         matched = False
                         for pattern in rules.paths:
                             if _path_matches(relative, pattern):
-                                if not allowed(entry_path, type_name):
+                                entry_path = Path(entry.path)
+                                if not allowed(entry_path, type_name, False):
                                     continue
                                 add_match(entry_path, "file", type_name, pattern)
                                 matched = True
@@ -319,7 +360,8 @@ def find_matches(
                             break
                         for pattern in rules.files:
                             if fnmatch.fnmatchcase(entry.name, pattern):
-                                if not allowed(entry_path, type_name):
+                                entry_path = Path(entry.path)
+                                if not allowed(entry_path, type_name, False):
                                     continue
                                 add_match(entry_path, "file", type_name, pattern)
                                 break

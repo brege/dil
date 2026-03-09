@@ -139,15 +139,20 @@ def print_prune(matches: list[Match], root: Path, selected_types: list[str]) -> 
 def print_overview(root: Path, rules: dict[str, TypeRules]) -> None:
     console = Console()
     detected = detect_types(root, rules)
+    selected = list(detected)
+    matches = find_matches(root, selected, rules, with_size=True)
+    counts: dict[str, int] = defaultdict(int)
+    sizes: dict[str, int] = defaultdict(int)
+    for match in matches:
+        counts[match.rule_type] += 1
+        sizes[match.rule_type] += match.size_bytes
     rows: list[ui.OverviewRow] = []
-    for name in detected:
-        matches = find_matches(root, [name], rules)
-        size_bytes = sum(match.size_bytes for match in matches)
+    for name in selected:
         rows.append(
             ui.OverviewRow(
                 type=name,
-                matches=len(matches),
-                size=size_bytes,
+                matches=counts[name],
+                size=sizes[name],
             )
         )
     ui.overview(console, str(root), rows)
@@ -174,7 +179,12 @@ def main(argv: list[str] | None = None) -> int:
 
     root = require_root(args.path)
     selected_types, rules = resolve_types(root, args.types)
-    matches = find_matches(root, selected_types, rules)
+    matches = find_matches(
+        root,
+        selected_types,
+        rules,
+        with_size=getattr(args, "compact", False),
+    )
 
     if args.command == "scan":
         print_scan(matches, root, selected_types, args.compact)
