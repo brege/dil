@@ -19,13 +19,6 @@ class LitterRow:
 
 
 @dataclass(frozen=True)
-class OverviewRow:
-    type: str
-    matches: int
-    size: int
-
-
-@dataclass(frozen=True)
 class ScanRow:
     type: str
     rule: str
@@ -41,17 +34,6 @@ def size(value: int) -> str:
         if current < 1000.0:
             return f"{current:.1f} {unit}"
     return f"{current:.1f} PB"
-
-
-def overview(console: Console, root: str, rows: list[OverviewRow]) -> None:
-    table = Table(box=TOKEI, pad_edge=False)
-    table.add_column("Type")
-    table.add_column("Matches", justify="right")
-    table.add_column("Reclaimable", justify="right")
-    for row in rows:
-        table.add_row(row.type, f"{row.matches:,}", size(row.size))
-    console.print(root)
-    console.print(table)
 
 
 def litter(console: Console, rows: list[LitterRow]) -> None:

@@ -17,13 +17,16 @@ ROOT = Path(__file__).resolve().parents[1]
 PYTHON = shutil.which("python3") or "python3"
 
 
-def run(*args: str, cwd: Path | None = None) -> subprocess.CompletedProcess[str]:
+def run(
+    *args: str, cwd: Path | None = None, stdin: str | None = None
+) -> subprocess.CompletedProcess[str]:
     command = [PYTHON, "-m", "dil.cli", *args]
     return subprocess.run(
         command,
         cwd=cwd or ROOT,
         text=True,
         capture_output=True,
+        input=stdin,
         env={"PYTHONPATH": str(ROOT)},
         check=False,
     )
@@ -44,8 +47,8 @@ def repo(tmp_path: Path) -> Path:
     return root
 
 
-def test_scan(repo: Path) -> None:
-    result = run("scan", str(repo))
+def test_paths(repo: Path) -> None:
+    result = run("-p", str(repo))
     assert result.returncode == 0
     assert "Type" in result.stdout
     assert "Rule" in result.stdout
@@ -55,8 +58,8 @@ def test_scan(repo: Path) -> None:
     assert "dil/__pycache__/" not in result.stdout
 
 
-def test_scan_compact(repo: Path) -> None:
-    result = run("scan", "--compact", str(repo))
+def test_compact(repo: Path) -> None:
+    result = run(str(repo))
     assert result.returncode == 0
     assert "Type" in result.stdout
     assert "Matches" in result.stdout
@@ -64,51 +67,94 @@ def test_scan_compact(repo: Path) -> None:
     assert "__pycache__" in result.stdout
 
 
-def test_overview(repo: Path) -> None:
+def test_default_detect(repo: Path) -> None:
     result = run(cwd=repo)
     assert result.returncode == 0
+    assert "Type" in result.stdout
+    assert "Rule" in result.stdout
+    assert "Matches" in result.stdout
     assert "python" in result.stdout
     assert "pixi" not in result.stdout
-    assert "common" in result.stdout
 
 
-def test_overview_path(repo: Path) -> None:
+def test_path_arg(repo: Path) -> None:
     result = run(str(repo))
     assert result.returncode == 0
-    assert str(repo) in result.stdout
     assert "python" in result.stdout
 
 
-def test_overview_cargo(tmp_path: Path) -> None:
+def test_cargo(tmp_path: Path) -> None:
     assert str(tmp_path).startswith("/tmp/")
     repo = tmp_path / "cargo"
     repo.mkdir()
     (repo / "main.rs").write_text("fn main() {}\n")
     result = run(cwd=repo)
     assert result.returncode == 0
-    assert "cargo" in result.stdout
+    assert "Total" in result.stdout
+    assert "0 B" in result.stdout
 
 
 def test_guard(repo: Path) -> None:
-    result = run("prune", "--type", "python", str(repo))
+    result = run("-d", "-n", "--type", "python", str(repo))
     assert result.returncode == 0
-    assert "Refusing to delete without --force." in result.stdout
+    assert "Path" in result.stdout
+    assert ".pytest_cache" in result.stdout
     assert (repo / "__pycache__").exists()
 
 
 def test_prune(repo: Path) -> None:
-    result = run("prune", "--force", "--type", "python", str(repo))
+    result = run("-d", "-y", "--type", "python", str(repo))
     assert result.returncode == 0
     assert not (repo / "__pycache__").exists()
     assert not (repo / ".pytest_cache").exists()
     assert not (repo / ".uv-cache").exists()
 
 
+def test_prompt_abort(repo: Path) -> None:
+    result = run("-d", "--type", "python", str(repo), stdin="n\n")
+    assert result.returncode == 0
+    assert "Path" in result.stdout
+    assert "/tmp/pytest-of-notroot/" in result.stdout
+    assert ".pytest_cache" in result.stdout
+    assert "Delete matched items? [y/N]" in result.stdout
+    assert "Aborted." in result.stdout
+    assert (repo / "__pycache__").exists()
+
+
+def test_prompt_prune(repo: Path) -> None:
+    result = run("-d", "--type", "python", str(repo), stdin="y\n")
+    assert result.returncode == 0
+    assert "Delete matched items? [y/N]" in result.stdout
+    assert "Deleted 3 item(s)" in result.stdout
+    assert not (repo / "__pycache__").exists()
+    assert not (repo / ".pytest_cache").exists()
+    assert not (repo / ".uv-cache").exists()
+
+
+def test_short(repo: Path) -> None:
+    result = run("-d", "-n", "-s", "--type", "python", str(repo))
+    assert result.returncode == 0
+    assert f"PROJECT: {repo}" in result.stdout
+    assert "TYPES:   python" in result.stdout
+    assert "WOULD DELETE:" in result.stdout
+    assert str(repo / ".pytest_cache") in result.stdout
+    assert f"To delete, run: dil -d -y {repo}" in result.stdout
+
+
+def test_short_empty(tmp_path: Path) -> None:
+    assert str(tmp_path).startswith("/tmp/")
+    repo = tmp_path / "empty"
+    repo.mkdir()
+    result = run("-d", "-n", "-s", "--type", "python", str(repo))
+    assert result.returncode == 0
+    assert result.stdout == ""
+
+
 def test_union(repo: Path) -> None:
     node_modules = repo / "node_modules"
     node_modules.mkdir()
     (node_modules / "pkg.json").write_text("{}\n")
-    result = run("scan", "--type", "python|node", str(repo))
+    result = run("-p", "--type", "python|node", str(repo))
     assert result.returncode == 0
     assert "node_modules/" in result.stdout
 
@@ -117,7 +163,7 @@ def test_stopword(repo: Path) -> None:
     build = repo / "node_modules" / "pkg" / "build"
     build.mkdir(parents=True)
     (build / "artifact.js").write_text("x\n")
-    result = run("scan", "--type", "python|node", str(repo))
+    result = run("-p", "--type", "python|node", str(repo))
     assert result.returncode == 0
     assert "node_modules/pkg/build/" not in result.stdout
 
@@ -126,7 +172,7 @@ def test_path(repo: Path) -> None:
     target = repo / "project" / "target"
     target.mkdir(parents=True)
     (target / "classes.bin").write_bytes(b"x")
-    result = run("scan", "--type", "sbt", str(repo))
+    result = run("-p", "--type", "sbt", str(repo))
     assert result.returncode == 0
     assert "project/target/" in result.stdout
 
@@ -134,7 +180,7 @@ def test_path(repo: Path) -> None:
 def test_common(repo: Path) -> None:
     swap = repo / "note.swp"
     swap.write_text("junk\n")
-    result = run("scan", "--type", "common", str(repo))
+    result = run("-p", "--type", "common", str(repo))
     assert result.returncode == 0
     assert "note.swp" in result.stdout
 
@@ -150,7 +196,7 @@ def test_latex_ancestor(tmp_path: Path) -> None:
     (repo / "other").mkdir()
     (repo / "other" / "foo.log").write_text("app\n")
 
-    result = run("scan", "--type", "latex", str(repo))
+    result = run("-p", "--type", "latex", str(repo))
     assert result.returncode == 0
     assert "project/build/foo.log" in result.stdout
     assert "other/foo.log" not in result.stdout
@@ -162,6 +208,13 @@ def test_shebang(repo: Path) -> None:
     result = run(cwd=repo)
     assert result.returncode == 0
     assert "python" in result.stdout
+
+
+def test_absolute(repo: Path) -> None:
+    result = run("-P", "--type", "python", str(repo))
+    assert result.returncode == 0
+    assert str(repo) in result.stdout
+    assert ".pytest_cache" in result.stdout
 
 
 def test_rules(tmp_path: Path) -> None:

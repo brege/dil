@@ -17,32 +17,15 @@ def build_parser() -> argparse.ArgumentParser:
     parser = argparse.ArgumentParser(
         prog="dil", description="Detect and prune disposable project litter"
     )
-    subparsers = parser.add_subparsers(dest="command")
-
-    scan = subparsers.add_parser("scan")
-    scan.add_argument("path", nargs="?", default=".")
-    scan.add_argument("--type", dest="types", action="append")
-    scan.add_argument("-c", "--compact", action="store_true")
-
-    prune = subparsers.add_parser("prune")
-    prune.add_argument("path", nargs="?", default=".")
-    prune.add_argument("--type", dest="types", action="append", required=True)
-    prune.add_argument("--pretty", action="store_true")
-    prune.add_argument("-f", "--force", action="store_true")
-    prune.add_argument("-n", "--dry-run", action="store_true")
-
+    parser.add_argument("path", nargs="?", default=".")
+    parser.add_argument("--type", dest="types", action="append")
+    parser.add_argument("-p", "--paths", action="store_true")
+    parser.add_argument("-P", "--absolute-paths", action="store_true")
+    parser.add_argument("-d", "--delete", action="store_true")
+    parser.add_argument("-n", "--dry-run", action="store_true")
+    parser.add_argument("-s", "--short", action="store_true")
+    parser.add_argument("-y", "--yes", action="store_true")
     return parser
-
-
-def _overview_path(argv: list[str] | None) -> str | None:
-    if not argv:
-        return "."
-    first = argv[0]
-    if first in {"scan", "prune", "-h", "--help"}:
-        return None
-    if first.startswith("-"):
-        return None
-    return first
 
 
 def flatten_types(values: list[str]) -> list[str]:
@@ -74,34 +57,32 @@ def resolve_types(
     return selected, rules
 
 
-def print_scan(
-    matches: list[Match], root: Path, selected_types: list[str], compact: bool
-) -> None:
-    if compact:
-        grouped: dict[str, dict[str, tuple[int, int]]] = defaultdict(dict)
-        for match in matches:
-            count, size_bytes = grouped[match.rule_type].get(match.rule_value, (0, 0))
-            grouped[match.rule_type][match.rule_value] = (
-                count + 1,
-                size_bytes + match.size_bytes,
-            )
+def print_litter(matches: list[Match], selected_types: list[str]) -> None:
+    grouped: dict[str, dict[str, tuple[int, int]]] = defaultdict(dict)
+    for match in matches:
+        count, size_bytes = grouped[match.rule_type].get(match.rule_value, (0, 0))
+        grouped[match.rule_type][match.rule_value] = (
+            count + 1,
+            size_bytes + match.size_bytes,
+        )
 
-        rows: list[ui.LitterRow] = []
-        for type_name in selected_types:
-            for rule_value, (count, size_bytes) in sorted(
-                grouped.get(type_name, {}).items()
-            ):
-                rows.append(
-                    ui.LitterRow(
-                        type=type_name,
-                        rule=rule_value,
-                        matches=count,
-                        size=size_bytes,
-                    )
+    rows: list[ui.LitterRow] = []
+    for type_name in selected_types:
+        for rule_value, (count, size_bytes) in sorted(
+            grouped.get(type_name, {}).items()
+        ):
+            rows.append(
+                ui.LitterRow(
+                    type=type_name,
+                    rule=rule_value,
+                    matches=count,
+                    size=size_bytes,
                 )
-        ui.litter(Console(), rows)
-        return
+            )
+    ui.litter(Console(), rows)
 
+
+def print_paths(matches: list[Match], root: Path, selected_types: list[str]) -> None:
     rows: list[ui.ScanRow] = []
     for type_name in selected_types:
         for match in matches:
@@ -115,16 +96,37 @@ def print_scan(
                     path=f"{match.path.relative_to(root).as_posix()}{suffix}",
                 )
             )
-
     ui.scan(Console(), rows)
 
 
-def print_prune(matches: list[Match], root: Path, selected_types: list[str]) -> None:
-    type_label = "|".join(selected_types)
-    print(f"Skip analysis for type '{type_label}' in directory: {root}")
+def print_absolute_paths(matches: list[Match], selected_types: list[str]) -> None:
+    rows: list[ui.ScanRow] = []
+    for type_name in selected_types:
+        for match in matches:
+            if match.rule_type != type_name:
+                continue
+            suffix = "/" if match.kind == "dir" else ""
+            rows.append(
+                ui.ScanRow(
+                    type=type_name,
+                    rule=match.rule_value,
+                    path=f"{match.path}{suffix}",
+                )
+            )
+    ui.scan(Console(), rows)
+
+
+def print_delete(matches: list[Match], root: Path, selected_types: list[str]) -> None:
+    active = [
+        name
+        for name in selected_types
+        if any(match.rule_type == name for match in matches)
+    ]
     print("Dry run mode: no files will be deleted")
     print()
     print(f"Project directory: {root}")
+    if active:
+        print(f"Types: {'|'.join(active)}")
     if matches:
         print("  WOULD DELETE:")
         for match in matches:
@@ -136,26 +138,23 @@ def print_prune(matches: list[Match], root: Path, selected_types: list[str]) -> 
     print("Dry run complete: no files deleted")
 
 
-def print_overview(root: Path, rules: dict[str, TypeRules]) -> None:
-    console = Console()
-    detected = detect_types(root, rules)
-    selected = list(detected)
-    matches = find_matches(root, selected, rules, with_size=True)
-    counts: dict[str, int] = defaultdict(int)
-    sizes: dict[str, int] = defaultdict(int)
+def print_short(matches: list[Match], root: Path, selected_types: list[str]) -> None:
+    if not matches:
+        return
+    active = [
+        name
+        for name in selected_types
+        if any(match.rule_type == name for match in matches)
+    ]
+    print(f"PROJECT: {root}")
+    print(f"TYPES:   {'|'.join(active)}")
+    print("WOULD DELETE:")
+    print("-----")
     for match in matches:
-        counts[match.rule_type] += 1
-        sizes[match.rule_type] += match.size_bytes
-    rows: list[ui.OverviewRow] = []
-    for name in selected:
-        rows.append(
-            ui.OverviewRow(
-                type=name,
-                matches=counts[name],
-                size=sizes[name],
-            )
-        )
-    ui.overview(console, str(root), rows)
+        suffix = "/" if match.kind == "dir" else ""
+        print(f"{match.path}{suffix}")
+    print()
+    print(f"To delete these items, run: dil -d -y {root}")
 
 
 def prune_matches(matches: list[Match]) -> None:
@@ -166,16 +165,25 @@ def prune_matches(matches: list[Match]) -> None:
             match.path.unlink(missing_ok=True)
 
 
-def main(argv: list[str] | None = None) -> int:
-    argsv = sys.argv[1:] if argv is None else argv
-    path_value = _overview_path(argsv)
-    if path_value is not None:
-        root = require_root(path_value)
-        print_overview(root, load_rules(root))
-        return 0
+def confirm() -> bool:
+    try:
+        reply = input("Delete matched items? [y/N] ")
+    except EOFError:
+        return False
+    return reply in {"y", "Y"}
 
+
+def main(argv: list[str] | None = None) -> int:
     parser = build_parser()
-    args = parser.parse_args(argsv)
+    args = parser.parse_args(sys.argv[1:] if argv is None else argv)
+    if args.paths and args.absolute_paths:
+        raise SystemExit("error: choose only one of --paths or --absolute-paths")
+    if args.dry_run and not args.delete:
+        raise SystemExit("error: --dry-run requires --delete")
+    if args.yes and not args.delete:
+        raise SystemExit("error: --yes requires --delete")
+    if args.short and not (args.delete and args.dry_run):
+        raise SystemExit("error: --short requires --delete --dry-run")
 
     root = require_root(args.path)
     selected_types, rules = resolve_types(root, args.types)
@@ -183,18 +191,35 @@ def main(argv: list[str] | None = None) -> int:
         root,
         selected_types,
         rules,
-        with_size=getattr(args, "compact", False),
+        with_size=not args.paths and not args.absolute_paths,
     )
 
-    if args.command == "scan":
-        print_scan(matches, root, selected_types, args.compact)
+    if args.paths:
+        print_paths(matches, root, selected_types)
         return 0
 
-    if not args.force:
-        print_prune(matches, root, selected_types)
-        print()
-        print("Refusing to delete without --force.")
+    if args.absolute_paths:
+        print_absolute_paths(matches, selected_types)
         return 0
+
+    if not args.delete:
+        print_litter(matches, selected_types)
+        return 0
+
+    if args.dry_run:
+        if args.short:
+            print_short(matches, root, selected_types)
+            return 0
+        print_absolute_paths(matches, selected_types)
+        return 0
+
+    if not args.yes:
+        if not matches:
+            return 0
+        print_absolute_paths(matches, selected_types)
+        if not confirm():
+            print("Aborted.")
+            return 0
 
     prune_matches(matches)
     print(f"Deleted {len(matches)} item(s)")

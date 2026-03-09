@@ -14,25 +14,89 @@ uv tool install .
 
 ## Usage
 
-```bash
-dil scan --type python .             # paths to __pycache__, .pyc, etc
-dil scan --type python|node .        # python and node litter paths
-dil report --type python .           # python litter stats
-dil prune --force --type python .    # delete __pycache_, .pyc, etc
-```
-## Goal
-
-To be able to run
+Compact grouped litter summary.
 ```bash
 dil
 ```
-inside a project, provide a digest from a detected project type, and confirm to prune.
+
+### Examples
+
+#### Litter Stats
+
+Example output from a project[^1] that has a Flask server, a React UI, and uses Node packages:
+
+```bash
+cd ~/src/aoife
+dil
+```
+
+You can equivalently do  `dil --type python|node|react ~/src/aoife`.
+
+```
+ Type     Rule           Matches       Size
+ ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+ node     node_modules         1   391.9 MB
+ ──────────────────────────────────────────
+ python   .ruff_cache          1      376 B
+          .uv-cache            1      944 B
+          __pycache__          1    21.3 KB
+ ──────────────────────────────────────────
+ react    dist                 1   681.9 KB
+ ──────────────────────────────────────────
+ Total                         5   392.6 MB
+ ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+```
+[^1]: This example is of [aoife](https://github.com/brege/aoife).
+
+#### Project Litter Paths
+
+Use `-p` to show paths, `-P` to show absolute paths
+
+```bash
+dil -p ~/src/aoife
+```
+
+```
+ Type     Rule           Path                 
+ ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━ 
+ node     node_modules   node_modules/        
+ ──────────────────────────────────────────── 
+ python   .ruff_cache    .ruff_cache/         
+          .uv-cache      .uv-cache/           
+          __pycache__    backend/__pycache__/ 
+ ──────────────────────────────────────────── 
+ react    dist           dist/                
+ ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━ 
+```
+
+#### Delete / Prune
+
+Use `-n` for a dry run, `-d` to prompt before deleting, and `-d -y` to skip the prompt.
+
+```bash
+dil -d ~/src/aoife
+```
+
+```
+ Type     Rule           Path                                                    
+ ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━ 
+ node     node_modules   /home/user/src/aoife/node_modules/        
+ ─────────────────────────────────────────────────────────────────────────────── 
+ python   .ruff_cache    /home/user/src/aoife/.ruff_cache/         
+          .uv-cache      /home/user/src/aoife/.uv-cache/           
+          __pycache__    /home/user/src/aoife/backend/__pycache__/ 
+ ─────────────────────────────────────────────────────────────────────────────── 
+ react    dist           /home/user/src/aoife/dist/                
+ ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━ 
+Delete matched items? [y/N] y
+Deleted 5 item(s)
+```
 
 ## Background
 
 The purpose of **dil** is to provide a review and delete mechanism for disposable project artifacts. It is a Python port of my Bash-only tool, [**ilma**](https://github.com/brege/ilma), to create encrypted archives from the destination node *with the disposable matter excised from detected project branches*.
 
-That made ilma far too broad in scope. The pruning and statistical features of ilma are useful to extract in their own right. 
+That made ilma far too broad in scope. The pruning and review features of ilma are useful to extract in their own right. 
 
 ### Upstream
 
@@ -47,7 +111,7 @@ Here's what's available in the world today.
 ### Approach
 
 - Kondo is not broad enough for **dil**. LaTeX, React, etc are not in Kondo's `lib.rs`.
-- Tokei's `languages.json` is fantastic as a detector for filetypes and shebangs
+- Tokei's `languages.json` is fantastic as a detector for file types and shebangs
 - github/gitignore doesn't distinguish between disposable and user generated data.
 
 Therefore, the approach is to map the overlap of Tokei's `languages.json` and Kondo's `lib.rs`, resolve the conflicts, map the keys, and supplement with a manually curated policy file: `dil.toml`.

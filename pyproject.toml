@@ -19,7 +19,6 @@ dependencies = [
 
 [project.scripts]
 dil = "dil.cli:main"
-rules = "gen.rules:main"
 
 [dependency-groups]
 dev = [
