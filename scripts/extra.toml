@@ -1,0 +1,79 @@
+[bash]
+dirs = [
+  "tmp",
+  "temp",
+]
+files = [
+  "*.tmp",
+  "*.temp",
+  ".DS_Store",
+  "Thumbs.db",
+  "*.swp",
+  "*.swo",
+  "*~",
+  ".*.un~",
+]
+paths = []
+detect_files = []
+detect_suffix = [
+  ".sh",
+]
+
+[latex]
+dirs = [
+  "_minted-*",
+]
+files = [
+  "*.aux",
+  "*.log",
+  "*.out",
+  "*.toc",
+  "*.lof",
+  "*.lot",
+  "*.fdb_latexmk",
+  "*.fls",
+  "*.synctex.gz",
+  "*.blg",
+  "*.run.xml",
+  "*.bcf",
+]
+paths = []
+detect_files = []
+detect_suffix = [
+  ".tex",
+  ".sty",
+]
+
+[python]
+dirs = [
+  "venv",
+  ".venv",
+  "env",
+  ".env",
+  ".uv-cache",
+  "dist",
+  "build",
+]
+files = [
+  "*.pyc",
+]
+paths = [
+  ".uv-cache/**",
+]
+detect_files = []
+detect_suffix = []
+
+[react]
+dirs = [
+  "dist",
+  "build",
+  "coverage",
+  ".next",
+]
+files = []
+paths = []
+detect_files = []
+detect_suffix = [
+  ".jsx",
+  ".tsx",
+]

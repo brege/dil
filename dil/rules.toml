@@ -1,71 +1,237 @@
-[python]
+[bash]
 dirs = [
-  "__pycache__",
-  ".pytest_cache",
-  "venv",
-  ".venv",
-  "env",
-  ".env",
-  ".tox",
-  ".uv-cache",
-  "dist",
-  "build",
+    "tmp",
+    "temp",
 ]
 files = [
-  "*.pyc",
-  "*.pyo",
-  "*.egg-info",
+    "*.tmp",
+    "*.temp",
+    ".DS_Store",
+    "Thumbs.db",
+    "*.swp",
+    "*.swo",
+    "*~",
+    ".*.un~",
 ]
-paths = [
-  ".uv-cache/**",
-]
+paths = []
 
-[node]
+[cabal]
+dirs = ["dist-newstyle"]
+files = []
+paths = []
+
+[cargo]
 dirs = [
-  "node_modules",
-  "dist",
-  "build",
-  ".next",
-  "coverage",
+    "target",
+    ".xwin-cache",
 ]
-files = [
-  "package-lock.json",
+files = []
+paths = []
+
+[cmake]
+dirs = [
+    "build",
+    "cmake-build-debug",
+    "cmake-build-release",
 ]
+files = []
+paths = []
+
+[cocoapods]
+dirs = ["Pods"]
+files = []
+paths = []
+
+[composer]
+dirs = ["vendor"]
+files = []
+paths = []
+
+[dotnet]
+dirs = [
+    "bin",
+    "obj",
+]
+files = []
+paths = []
+
+[elixir]
+dirs = [
+    "_build",
+    ".elixir-tools",
+    ".elixir_ls",
+    ".lexical",
+]
+files = []
+paths = []
+
+[godot4]
+dirs = [".godot"]
+files = []
+paths = []
+
+[gradle]
+dirs = [
+    "build",
+    ".gradle",
+]
+files = []
+paths = []
+
+[jupyter]
+dirs = [".ipynb_checkpoints"]
+files = []
 paths = []
 
 [latex]
-dirs = [
-  "_minted-*",
-]
+dirs = ["_minted-*"]
 files = [
-  "*.aux",
-  "*.log",
-  "*.out",
-  "*.toc",
-  "*.lof",
-  "*.lot",
-  "*.fdb_latexmk",
-  "*.fls",
-  "*.synctex.gz",
-  "*.blg",
-  "*.run.xml",
-  "*.bcf",
+    "*.aux",
+    "*.log",
+    "*.out",
+    "*.toc",
+    "*.lof",
+    "*.lot",
+    "*.fdb_latexmk",
+    "*.fls",
+    "*.synctex.gz",
+    "*.blg",
+    "*.run.xml",
+    "*.bcf",
 ]
 paths = []
 
-[bash]
+[maven]
+dirs = ["target"]
+files = []
+paths = []
+
+[node]
 dirs = [
-  "tmp",
-  "temp",
+    "node_modules",
+    ".angular",
 ]
-files = [
-  "*.tmp",
-  "*.temp",
-  ".DS_Store",
-  "Thumbs.db",
-  "*.swp",
-  "*.swo",
-  "*~",
-  ".*.un~",
+files = []
+paths = []
+
+[pixi]
+dirs = [".pixi"]
+files = []
+paths = []
+
+[pub]
+dirs = [
+    "build",
+    ".dart_tool",
 ]
+files = []
+paths = [
+    "linux/flutter/ephemeral",
+    "windows/flutter/ephemeral",
+]
+
+[python]
+dirs = [
+    ".mypy_cache",
+    ".nox",
+    ".pytest_cache",
+    ".ruff_cache",
+    ".tox",
+    "__pycache__",
+    "__pypackages__",
+    "venv",
+    ".venv",
+    "env",
+    ".env",
+    ".uv-cache",
+    "dist",
+    "build",
+]
+files = ["*.pyc"]
+paths = [".uv-cache/**"]
+
+[react]
+dirs = [
+    "dist",
+    "build",
+    "coverage",
+    ".next",
+]
+files = []
+paths = []
+
+[reactnative]
+dirs = [
+    "node_modules",
+    ".expo",
+    ".metro",
+]
+files = []
+paths = [
+    "android/build",
+    "android/.gradle",
+    "ios/build",
+    "ios/DerivedData",
+    "ios/Pods",
+]
+
+[sbt]
+dirs = ["target"]
+files = []
+paths = ["project/target"]
+
+[stack]
+dirs = [".stack-work"]
+files = []
+paths = []
+
+[swift]
+dirs = [
+    ".build",
+    ".swiftpm",
+]
+files = []
+paths = []
+
+[terraform]
+dirs = [".terraform"]
+files = []
+paths = []
+
+[turborepo]
+dirs = [".turbo"]
+files = []
+paths = []
+
+[unity]
+dirs = [
+    "Library",
+    "Temp",
+    "Obj",
+    "Logs",
+    "MemoryCaptures",
+    "Build",
+    "Builds",
+]
+files = []
+paths = []
+
+[unreal]
+dirs = [
+    "Binaries",
+    "Build",
+    "Saved",
+    "DerivedDataCache",
+    "Intermediate",
+]
+files = []
+paths = []
+
+[zig]
+dirs = [
+    "zig-cache",
+    ".zig-cache",
+    "zig-out",
+]
+files = []
 paths = []

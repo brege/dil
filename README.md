@@ -1,15 +1,16 @@
 # dil
 
-`dil` finds and removes project artifacts you do not want to keep.
+Remove disposable project artifacts.
 
-Examples include `__pycache__`, `node_modules`, `dist`, `build`, and similar generated files or directories.
+Examples include 
 
-Built-in types:
+- Python artifacts like `__pycache__`, `*.pyc`, etc.
+- Node modules like `node_modules`, etc.
+- Latex files like `*.{toc,aux,log}`
 
-- `python`
-- `node`
-- `latex`
-- `bash`
+And many more. See .... TODO
+
+## Features
 
 More to hopefully come. See 
 

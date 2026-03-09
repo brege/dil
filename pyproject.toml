@@ -15,11 +15,12 @@ dil = "dil.cli:main"
 dev = [
   "pytest>=8.3.0",
   "ruff>=0.11.0",
+  "tomlkit>=0.12.1",
   "ty>=0.0.17",
 ]
 
 [tool.ty.src]
-include = ["dil", "tests"]
+include = ["dil", "tests", "scripts"]
 respect-ignore-files = true
 
 [tool.hatch.build.targets.sdist]

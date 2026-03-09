@@ -3,6 +3,7 @@ from __future__ import annotations
 import shutil
 import subprocess
 from pathlib import Path
+import tomllib
 
 import pytest
 
@@ -76,3 +77,43 @@ def test_union(repo: Path) -> None:
     result = run("scan", "--type", "python|node", str(repo))
     assert result.returncode == 0
     assert "node_modules/" in result.stdout
+
+
+def test_path(repo: Path) -> None:
+    target = repo / "project" / "target"
+    target.mkdir(parents=True)
+    (target / "classes.bin").write_bytes(b"x")
+    result = run("scan", "--type", "sbt", str(repo))
+    assert result.returncode == 0
+    assert "project/target/" in result.stdout
+
+
+def test_bash(repo: Path) -> None:
+    swap = repo / "note.swp"
+    swap.write_text("junk\n")
+    result = run("scan", "--type", "bash", str(repo))
+    assert result.returncode == 0
+    assert "note.swp" in result.stdout
+
+
+def test_rules(tmp_path: Path) -> None:
+    path = tmp_path / "rules.toml"
+    result = subprocess.run(
+        [PYTHON, "scripts/kondo.py", "--write", str(path)],
+        cwd=ROOT,
+        text=True,
+        capture_output=True,
+        env={"PYTHONPATH": str(ROOT)},
+        check=False,
+    )
+    assert result.returncode == 0
+
+    with path.open("rb") as handle:
+        rules = tomllib.load(handle)
+
+    assert "__pycache__" in rules["python"]["dirs"]
+    assert ".pytest_cache" in rules["python"]["dirs"]
+    assert "*.pyc" in rules["python"]["files"]
+    assert "node_modules" in rules["node"]["dirs"]
+    assert "project/target" in rules["sbt"]["paths"]
+    assert "*.aux" in rules["latex"]["files"]
