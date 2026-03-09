@@ -110,9 +110,9 @@ Here's what's available in the world today.
 
 ### Approach
 
-- Kondo is not broad enough for **dil**. LaTeX, React, etc are not in Kondo's `lib.rs`.
+- Kondo is not broad enough for **dil**. LaTeX, React, etc are not in Kondo's `lib.rs`
 - Tokei's `languages.json` is fantastic as a detector for file types and shebangs
-- github/gitignore doesn't distinguish between disposable and user generated data.
+- github/gitignore doesn't distinguish between disposable and user generated data
 
 Therefore, the approach is to map the overlap of Tokei's `languages.json` and Kondo's `lib.rs`, resolve the conflicts, map the keys, and supplement with a manually curated policy file: `dil.toml`.
 
@@ -124,8 +124,7 @@ Therefore, the approach is to map the overlap of Tokei's `languages.json` and Ko
 
 ## Contributing
 
-See [CONTRIBUTING.md](./CONTRIBUTING.md) if you want to help refine litter
-rules, detector mappings, or fixture coverage.
+See [CONTRIBUTING.md](./CONTRIBUTING.md) if you want to help refine litter rules, detector mappings, or fixture coverage.
 
 
 ## License

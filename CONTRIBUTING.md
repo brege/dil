@@ -1,40 +1,40 @@
 # Contributing
 
-The highest-value contributions to **dil** are not Python refactors. They are better litter rules.
+The most useful contributions to **dil** are better litter rules.
 
 ## Completeness
 
-`dil` builds its rule set from:
+**dil** builds its rule set from three sources:
 
-- Kondo's Rust project artifact definitions
-- Tokei's language detector metadata
-- `dil.toml`, which resolves the mapping and carries local policy
+1. [Kondo](https://github.com/tbillington/kondo)'s Rust project artifact definitions -- [kondo: kondo-lib/src/lib.rs](https://github.com/tbillington/kondo/blob/master/kondo-lib/src/lib.rs)
+2. [Tokei](https://github.com/XAMPPRocky/tokei)'s language detector metadata -- [tokei: languages.json](https://github.com/XAMPPRocky/tokei/blob/master/languages.json)
+3. [dil's `dil.toml`](./dil.toml), which resolves the mapping of the above and extends local policy -- [dil:dil.toml](./dil.toml)
 
-That means the biggest gap is ecosystem familiarity. Python, Node, React, LaTeX, and the other currently covered types reflect the environments I actually use. If you work in another language, framework, or build tool, the most useful contribution is a rule refinement that proves:
+That means the biggest gap is ecosystem familiarity. Python, Node, React, LaTeX, and the other currently covered types reflect the environments I can comfortably work in. If you work in another language, framework, or build tool, the most useful contribution is a rule refinement that proves:
 
 - what is truly disposable
 - what only looks disposable but is user-authored or environment-specific
-- which detector should activate the type
+- which sentinel should activate the type
 - which detector is too weak and causes false positives
 
-Good rule contributions should include a real project tree or a reduced dummy fixture that shows both sides: what should be removed and what must survive. See `test/fixtures.yml` for the fixtures used by `pytest`.
+Good rule contributions should include a reduced dummy fixture mocked from a real project tree that shows both sides: what should be removed and what must survive.
 
-## Rule Work
-
-`dil.toml` is policy.
-
-- map Kondo project names and Tokei language keys into a `dil` type
-- add or remove litter rules
-- set canonical priorities where overlapping types exist
-- require ancestor-bound matching for types like LaTeX
-
-`dil/rules.toml` is generated output that merges `dil.toml` with extractions from Kondo and Tokei.
 
 ## Tests
 
-The end-to-end harness lives under `test/`.
+The most useful test contributions are new fixtures in `test/fixtures.yml`. To run tests on these fixtures:
 
-The most useful test contributions are new fixtures in `test/fixtures.yml`. Each fixture should describe:
+```bash
+uv run pytest
+```
+
+The test pipeline is:
+
+1. read fixtures from `test/fixtures.yml`
+2. build the project tree dummies under `/tmp` via `test/setup.py`
+3. match output vs. expected via `test/harness.py`
+
+Each fixture should describe the artifact shape of the framework or language being added to `fixtures.yml`.
 
 - the project shape
 - the expected matched paths
@@ -47,9 +47,7 @@ The harness builds those trees under `/tmp` and checks the real CLI against the 
 
 The current policy file is repo-global: `dil.toml`.
 
-A natural extension is a local `dil.toml` inside an arbitrary project tree, so a
-repo can refine or narrow the generated defaults without forking `dil` itself.
-That should stay small in scope:
+A natural extension is a local `dil.toml` inside an arbitrary project tree, so a repo can refine or narrow the generated defaults without forking **dil** itself. That should stay small in scope:
 
 - local type additions
 - local rule drops
