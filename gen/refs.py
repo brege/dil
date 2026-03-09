@@ -5,15 +5,15 @@ from urllib.request import urlopen
 
 
 ROOT = Path(__file__).resolve().parent.parent
-STATE = ROOT / "refs" / "state.json"
+STATE = ROOT / "data" / "state.json"
 SOURCES = {
     "kondo": (
         "https://raw.githubusercontent.com/tbillington/kondo/master/kondo-lib/src/lib.rs",
-        ROOT / "refs" / "kondo" / "kondo-lib" / "src" / "lib.rs",
+        ROOT / "data" / "kondo" / "lib.rs",
     ),
     "tokei": (
         "https://raw.githubusercontent.com/XAMPPRocky/tokei/master/languages.json",
-        ROOT / "refs" / "tokei" / "languages.json",
+        ROOT / "data" / "tokei" / "languages.json",
     ),
 }
 

@@ -7,6 +7,10 @@ import tomllib
 
 import pytest
 
+from gen import kondo
+from gen import rules
+from gen import tokei
+
 
 ROOT = Path(__file__).resolve().parents[1]
 PYTHON = shutil.which("python3") or "python3"
@@ -88,32 +92,34 @@ def test_path(repo: Path) -> None:
     assert "project/target/" in result.stdout
 
 
-def test_bash(repo: Path) -> None:
+def test_common(repo: Path) -> None:
     swap = repo / "note.swp"
     swap.write_text("junk\n")
-    result = run("scan", "--type", "bash", str(repo))
+    result = run("scan", "--type", "common", str(repo))
     assert result.returncode == 0
     assert "note.swp" in result.stdout
 
 
 def test_rules(tmp_path: Path) -> None:
-    path = tmp_path / "rules.toml"
-    result = subprocess.run(
-        [PYTHON, "scripts/kondo.py", "--write", str(path)],
-        cwd=ROOT,
-        text=True,
-        capture_output=True,
-        env={"PYTHONPATH": str(ROOT)},
-        check=False,
+    litter = kondo.merge(kondo.parse(kondo.SOURCE.read_text()), kondo.POLICY)
+    detect = tokei.merge(tokei.parse(tokei.SOURCE), tokei.POLICY)
+    data = tomllib.loads(rules.render(rules.merge(litter, detect)))
+
+    assert "__pycache__" in data["python"]["dirs"]
+    assert ".pytest_cache" in data["python"]["dirs"]
+    assert "*.pyc" in data["python"]["files"]
+    assert "node_modules" in data["node"]["dirs"]
+    assert "project/target" in data["sbt"]["paths"]
+    assert "*.aux" in data["latex"]["files"]
+
+
+def test_detect(tmp_path: Path) -> None:
+    data = tomllib.loads(
+        tokei.render(tokei.merge(tokei.parse(tokei.SOURCE), tokei.POLICY))
     )
-    assert result.returncode == 0
 
-    with path.open("rb") as handle:
-        rules = tomllib.load(handle)
-
-    assert "__pycache__" in rules["python"]["dirs"]
-    assert ".pytest_cache" in rules["python"]["dirs"]
-    assert "*.pyc" in rules["python"]["files"]
-    assert "node_modules" in rules["node"]["dirs"]
-    assert "project/target" in rules["sbt"]["paths"]
-    assert "*.aux" in rules["latex"]["files"]
+    assert ".py" in data["python"]["detect"]["suffix"]
+    assert "python3" in data["python"]["detect"]["env"]
+    assert ".tex" in data["latex"]["detect"]["suffix"]
+    assert ".jsx" in data["react"]["detect"]["suffix"]
+    assert "node" in data["node"]["detect"]["env"]

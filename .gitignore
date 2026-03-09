@@ -1,3 +1,6 @@
+# state files
+data/
+
 # build artifacts
 __pycache__
 *.pyc

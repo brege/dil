@@ -1,0 +1,106 @@
+from pathlib import Path
+import argparse
+from difflib import unified_diff
+import sys
+
+import tomlkit
+from tomlkit.items import Array
+
+from gen import kondo
+from gen import tokei
+from gen.policy import DETECT
+from gen.policy import LITTER
+from gen.policy import SOURCE as POLICY
+
+
+ROOT = Path(__file__).resolve().parent.parent
+KONDO = ROOT / "data" / "kondo" / "lib.rs"
+TOKEI = ROOT / "data" / "tokei" / "languages.json"
+TARGET = ROOT / "dil" / "rules.toml"
+
+
+def build() -> argparse.ArgumentParser:
+    parser = argparse.ArgumentParser(description="Build dil rules from cached data")
+    parser.add_argument("--kondo", type=Path, default=KONDO)
+    parser.add_argument("--tokei", type=Path, default=TOKEI)
+    parser.add_argument("--policy", type=Path, default=POLICY)
+    return parser
+
+
+def merge(
+    litter: dict[str, dict[str, list[str]]],
+    detect: dict[str, dict[str, list[str]]],
+) -> dict[str, dict[str, list[str]]]:
+    merged: dict[str, dict[str, list[str]]] = {}
+    for name in sorted(set(litter) | set(detect)):
+        current = {field: [] for field in LITTER + DETECT}
+        for field in LITTER:
+            current[field] = litter.get(name, {}).get(field, [])
+        for field in DETECT:
+            current[field] = detect.get(name, {}).get(field, [])
+        merged[name] = current
+    return merged
+
+
+def array(items: list[str]) -> Array:
+    data = tomlkit.array()
+    for item in items:
+        data.append(item)
+    if len(items) > 1:
+        data.multiline(True)
+    return data
+
+
+def render(rules: dict[str, dict[str, list[str]]]) -> str:
+    doc = tomlkit.document()
+    for name, rule in rules.items():
+        table = tomlkit.table()
+        table.add("dirs", array(rule["dirs"]))
+        table.add("files", array(rule["files"]))
+        table.add("paths", array(rule["paths"]))
+        if any(rule[field] for field in DETECT):
+            detect_table = tomlkit.table()
+            if rule["detect_files"]:
+                detect_table.add("files", array(rule["detect_files"]))
+            if rule["detect_suffix"]:
+                detect_table.add("suffix", array(rule["detect_suffix"]))
+            if rule["detect_names"]:
+                detect_table.add("names", array(rule["detect_names"]))
+            if rule["detect_env"]:
+                detect_table.add("env", array(rule["detect_env"]))
+            if rule["detect_shebang"]:
+                detect_table.add("shebang", array(rule["detect_shebang"]))
+            table.add("detect", detect_table)
+        doc.add(name, table)
+    return tomlkit.dumps(doc)
+
+
+def diff(path: Path, text: str) -> str:
+    current = path.read_text() if path.is_file() else ""
+    if current == text:
+        return ""
+    lines = unified_diff(
+        current.splitlines(keepends=True),
+        text.splitlines(keepends=True),
+        fromfile=str(path),
+        tofile=str(path),
+    )
+    return "".join(lines)
+
+
+def main() -> int:
+    args = build().parse_args()
+    litter = kondo.merge(kondo.parse(args.kondo.read_text()), args.policy)
+    detect = tokei.merge(tokei.parse(args.tokei), args.policy)
+    text = render(merge(litter, detect))
+    delta = diff(TARGET, text)
+    if not delta:
+        return 0
+    TARGET.parent.mkdir(parents=True, exist_ok=True)
+    TARGET.write_text(text)
+    sys.stdout.write(delta)
+    return 0
+
+
+if __name__ == "__main__":
+    raise SystemExit(main())

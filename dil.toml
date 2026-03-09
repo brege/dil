@@ -1,0 +1,172 @@
+[type.cabal]
+kondo = ["cabal"]
+tokei = ["Cabal"]
+
+[type.cargo]
+kondo = ["cargo"]
+tokei = ["Rust"]
+
+[type.cmake]
+kondo = ["cmake"]
+tokei = ["CMake"]
+
+[type.cocoapods]
+kondo = ["cocoapods"]
+tokei = []
+
+[type.common]
+kondo = []
+tokei = []
+
+[type.common.add]
+dirs = [
+  "tmp",
+  "temp",
+]
+files = [
+  "*.tmp",
+  "*.temp",
+  ".DS_Store",
+  "Thumbs.db",
+  "*.swp",
+  "*.swo",
+  "*~",
+  ".*.un~",
+]
+paths = []
+
+[type.composer]
+kondo = ["composer"]
+tokei = ["Php"]
+
+[type.dotnet]
+kondo = ["dotnet"]
+tokei = ["CSharp", "FSharp", "MsBuild"]
+
+[type.elixir]
+kondo = ["elixir"]
+tokei = ["Elixir"]
+
+[type.godot4]
+kondo = ["godot4"]
+tokei = ["GdScript", "CSharp"]
+
+[type.gradle]
+kondo = ["gradle"]
+tokei = ["Groovy", "Kotlin", "Java"]
+
+[type.jupyter]
+kondo = ["jupyter"]
+tokei = ["Jupyter"]
+
+[type.latex]
+kondo = []
+tokei = ["Tex"]
+
+[type.latex.add]
+dirs = ["_minted-*"]
+files = [
+  "*.aux",
+  "*.log",
+  "*.out",
+  "*.toc",
+  "*.lof",
+  "*.lot",
+  "*.fdb_latexmk",
+  "*.fls",
+  "*.synctex.gz",
+  "*.blg",
+  "*.run.xml",
+  "*.bcf",
+]
+paths = []
+
+[type.maven]
+kondo = ["maven"]
+tokei = ["Java"]
+
+[type.node]
+kondo = ["node"]
+tokei = ["JavaScript", "TypeScript"]
+
+[type.node.add]
+detect_env = ["node"]
+detect_shebang = [
+  "#!/usr/bin/env node",
+  "#!/usr/bin/node",
+]
+
+[type.pixi]
+kondo = ["pixi"]
+tokei = ["Python"]
+
+[type.pub]
+kondo = ["pub"]
+tokei = ["Dart"]
+
+[type.python]
+kondo = ["python"]
+tokei = ["Python"]
+
+[type.python.add]
+dirs = [
+  "venv",
+  ".venv",
+  "env",
+  ".env",
+  ".uv-cache",
+  "dist",
+  "build",
+]
+files = ["*.pyc"]
+paths = [".uv-cache/**"]
+
+[type.react]
+kondo = []
+tokei = ["Jsx", "Tsx"]
+
+[type.react.add]
+dirs = [
+  "dist",
+  "build",
+  "coverage",
+  ".next",
+]
+files = []
+paths = []
+
+[type.reactnative]
+kondo = ["reactnative"]
+tokei = ["JavaScript", "TypeScript", "Jsx", "Tsx"]
+
+[type.sbt]
+kondo = ["sbt"]
+tokei = ["Scala"]
+
+[type.stack]
+kondo = ["stack"]
+tokei = ["Haskell"]
+
+[type.swift]
+kondo = ["swift"]
+tokei = ["Swift"]
+
+[type.terraform]
+kondo = ["terraform"]
+tokei = ["Hcl"]
+
+[type.turborepo]
+kondo = ["turborepo"]
+tokei = ["JavaScript", "TypeScript", "Jsx", "Tsx"]
+
+[type.unity]
+kondo = ["unity"]
+tokei = ["CSharp"]
+
+[type.unreal]
+kondo = ["unreal"]
+tokei = ["UnrealProject", "UnrealPlugin", "UnrealScript"]
+
+[type.zig]
+kondo = ["zig"]
+tokei = ["Zig"]

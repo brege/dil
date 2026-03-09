@@ -1,4 +1,41 @@
-[bash]
+[cabal]
+dirs = ["dist-newstyle"]
+files = []
+paths = []
+
+[cabal.detect]
+suffix = [".cabal"]
+
+[cargo]
+dirs = [
+    "target",
+    ".xwin-cache",
+]
+files = []
+paths = []
+
+[cargo.detect]
+suffix = [".rs"]
+
+[cmake]
+dirs = [
+    "build",
+    "cmake-build-debug",
+    "cmake-build-release",
+]
+files = []
+paths = []
+
+[cmake.detect]
+suffix = [".cmake"]
+names = ["cmakelists.txt"]
+
+[cocoapods]
+dirs = ["Pods"]
+files = []
+paths = []
+
+[common]
 dirs = [
     "tmp",
     "temp",
@@ -15,37 +52,13 @@ files = [
 ]
 paths = []
 
-[cabal]
-dirs = ["dist-newstyle"]
-files = []
-paths = []
-
-[cargo]
-dirs = [
-    "target",
-    ".xwin-cache",
-]
-files = []
-paths = []
-
-[cmake]
-dirs = [
-    "build",
-    "cmake-build-debug",
-    "cmake-build-release",
-]
-files = []
-paths = []
-
-[cocoapods]
-dirs = ["Pods"]
-files = []
-paths = []
-
 [composer]
 dirs = ["vendor"]
 files = []
 paths = []
+
+[composer.detect]
+suffix = [".php"]
 
 [dotnet]
 dirs = [
@@ -54,6 +67,21 @@ dirs = [
 ]
 files = []
 paths = []
+
+[dotnet.detect]
+suffix = [
+    ".cs",
+    ".csx",
+    ".fs",
+    ".fsi",
+    ".fsx",
+    ".fsscript",
+    ".csproj",
+    ".vbproj",
+    ".fsproj",
+    ".props",
+    ".targets",
+]
 
 [elixir]
 dirs = [
@@ -65,10 +93,23 @@ dirs = [
 files = []
 paths = []
 
+[elixir.detect]
+suffix = [
+    ".ex",
+    ".exs",
+]
+
 [godot4]
 dirs = [".godot"]
 files = []
 paths = []
+
+[godot4.detect]
+suffix = [
+    ".gd",
+    ".cs",
+    ".csx",
+]
 
 [gradle]
 dirs = [
@@ -78,10 +119,25 @@ dirs = [
 files = []
 paths = []
 
+[gradle.detect]
+suffix = [
+    ".groovy",
+    ".grt",
+    ".gtpl",
+    ".gvy",
+    ".kt",
+    ".kts",
+    ".java",
+]
+env = ["groovy"]
+
 [jupyter]
 dirs = [".ipynb_checkpoints"]
 files = []
 paths = []
+
+[jupyter.detect]
+suffix = [".ipynb"]
 
 [latex]
 dirs = ["_minted-*"]
@@ -101,10 +157,19 @@ files = [
 ]
 paths = []
 
+[latex.detect]
+suffix = [
+    ".tex",
+    ".sty",
+]
+
 [maven]
 dirs = ["target"]
 files = []
 paths = []
+
+[maven.detect]
+suffix = [".java"]
 
 [node]
 dirs = [
@@ -114,10 +179,37 @@ dirs = [
 files = []
 paths = []
 
+[node.detect]
+suffix = [
+    ".cjs",
+    ".js",
+    ".mjs",
+    ".ts",
+    ".mts",
+    ".cts",
+]
+env = ["node"]
+shebang = [
+    "#!/usr/bin/env node",
+    "#!/usr/bin/node",
+]
+
 [pixi]
 dirs = [".pixi"]
 files = []
 paths = []
+
+[pixi.detect]
+suffix = [
+    ".py",
+    ".pyw",
+    ".pyi",
+]
+env = [
+    "python",
+    "python2",
+    "python3",
+]
 
 [pub]
 dirs = [
@@ -129,6 +221,9 @@ paths = [
     "linux/flutter/ephemeral",
     "windows/flutter/ephemeral",
 ]
+
+[pub.detect]
+suffix = [".dart"]
 
 [python]
 dirs = [
@@ -150,6 +245,18 @@ dirs = [
 files = ["*.pyc"]
 paths = [".uv-cache/**"]
 
+[python.detect]
+suffix = [
+    ".py",
+    ".pyw",
+    ".pyi",
+]
+env = [
+    "python",
+    "python2",
+    "python3",
+]
+
 [react]
 dirs = [
     "dist",
@@ -159,6 +266,12 @@ dirs = [
 ]
 files = []
 paths = []
+
+[react.detect]
+suffix = [
+    ".jsx",
+    ".tsx",
+]
 
 [reactnative]
 dirs = [
@@ -175,15 +288,36 @@ paths = [
     "ios/Pods",
 ]
 
+[reactnative.detect]
+suffix = [
+    ".cjs",
+    ".js",
+    ".mjs",
+    ".ts",
+    ".mts",
+    ".cts",
+    ".jsx",
+    ".tsx",
+]
+
 [sbt]
 dirs = ["target"]
 files = []
 paths = ["project/target"]
 
+[sbt.detect]
+suffix = [
+    ".sc",
+    ".scala",
+]
+
 [stack]
 dirs = [".stack-work"]
 files = []
 paths = []
+
+[stack.detect]
+suffix = [".hs"]
 
 [swift]
 dirs = [
@@ -193,15 +327,37 @@ dirs = [
 files = []
 paths = []
 
+[swift.detect]
+suffix = [".swift"]
+
 [terraform]
 dirs = [".terraform"]
 files = []
 paths = []
 
+[terraform.detect]
+suffix = [
+    ".hcl",
+    ".tf",
+    ".tfvars",
+]
+
 [turborepo]
 dirs = [".turbo"]
 files = []
 paths = []
+
+[turborepo.detect]
+suffix = [
+    ".cjs",
+    ".js",
+    ".mjs",
+    ".ts",
+    ".mts",
+    ".cts",
+    ".jsx",
+    ".tsx",
+]
 
 [unity]
 dirs = [
@@ -216,6 +372,12 @@ dirs = [
 files = []
 paths = []
 
+[unity.detect]
+suffix = [
+    ".cs",
+    ".csx",
+]
+
 [unreal]
 dirs = [
     "Binaries",
@@ -227,6 +389,15 @@ dirs = [
 files = []
 paths = []
 
+[unreal.detect]
+suffix = [
+    ".uproject",
+    ".uplugin",
+    ".uc",
+    ".uci",
+    ".upkg",
+]
+
 [zig]
 dirs = [
     "zig-cache",
@@ -235,3 +406,6 @@ dirs = [
 ]
 files = []
 paths = []
+
+[zig.detect]
+suffix = [".zig"]
