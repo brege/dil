@@ -57,16 +57,16 @@ dil -p ~/src/aoife
 ```
 
 ```
- Type     Rule           Path                 
- ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━ 
- node     node_modules   node_modules/        
- ──────────────────────────────────────────── 
- python   .ruff_cache    .ruff_cache/         
-          .uv-cache      .uv-cache/           
-          __pycache__    backend/__pycache__/ 
- ──────────────────────────────────────────── 
- react    dist           dist/                
- ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━ 
+ Type     Rule           Path
+ ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+ node     node_modules   node_modules/
+ ────────────────────────────────────────────
+ python   .ruff_cache    .ruff_cache/
+          .uv-cache      .uv-cache/
+          __pycache__    backend/__pycache__/
+ ────────────────────────────────────────────
+ react    dist           dist/
+ ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
 ```
 
 #### Delete / Prune
@@ -78,16 +78,16 @@ dil -d ~/src/aoife
 ```
 
 ```
- Type     Rule           Path                                                    
- ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━ 
- node     node_modules   /home/user/src/aoife/node_modules/        
- ─────────────────────────────────────────────────────────────────────────────── 
- python   .ruff_cache    /home/user/src/aoife/.ruff_cache/         
-          .uv-cache      /home/user/src/aoife/.uv-cache/           
-          __pycache__    /home/user/src/aoife/backend/__pycache__/ 
- ─────────────────────────────────────────────────────────────────────────────── 
- react    dist           /home/user/src/aoife/dist/                
- ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━ 
+ Type     Rule           Path
+ ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+ node     node_modules   /home/user/src/aoife/node_modules/
+ ───────────────────────────────────────────────────────────────────────────────
+ python   .ruff_cache    /home/user/src/aoife/.ruff_cache/
+          .uv-cache      /home/user/src/aoife/.uv-cache/
+          __pycache__    /home/user/src/aoife/backend/__pycache__/
+ ───────────────────────────────────────────────────────────────────────────────
+ react    dist           /home/user/src/aoife/dist/
+ ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
 Delete matched items? [y/N] y
 Deleted 5 item(s)
 ```
@@ -96,7 +96,7 @@ Deleted 5 item(s)
 
 The purpose of **dil** is to provide a review and delete mechanism for disposable project artifacts. It is a Python port of my Bash-only tool, [**ilma**](https://github.com/brege/ilma), to create encrypted archives from the destination node *with the disposable matter excised from detected project branches*.
 
-That made ilma far too broad in scope. The pruning and review features of ilma are useful to extract in their own right. 
+That made ilma far too broad in scope. The pruning and review features of ilma are useful to extract in their own right.
 
 ### Upstream
 
@@ -121,6 +121,12 @@ Therefore, the approach is to map the overlap of Tokei's `languages.json` and Ko
 - Kondo · [github.com/tbillington/kondo](https://github.com/tbillington/kondo)
 - Tokei · [github.com/XAMPPRocky/tokei](https://github.com/XAMPPRocky/tokei)
 - github/gitignore · [github.com/github/gitignore](https://github.com/github/gitignore)
+
+## Contributing
+
+See [CONTRIBUTING.md](./CONTRIBUTING.md) if you want to help refine litter
+rules, detector mappings, or fixture coverage.
+
 
 ## License
 
