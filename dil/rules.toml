@@ -1,0 +1,71 @@
+[python]
+dirs = [
+  "__pycache__",
+  ".pytest_cache",
+  "venv",
+  ".venv",
+  "env",
+  ".env",
+  ".tox",
+  ".uv-cache",
+  "dist",
+  "build",
+]
+files = [
+  "*.pyc",
+  "*.pyo",
+  "*.egg-info",
+]
+paths = [
+  ".uv-cache/**",
+]
+
+[node]
+dirs = [
+  "node_modules",
+  "dist",
+  "build",
+  ".next",
+  "coverage",
+]
+files = [
+  "package-lock.json",
+]
+paths = []
+
+[latex]
+dirs = [
+  "_minted-*",
+]
+files = [
+  "*.aux",
+  "*.log",
+  "*.out",
+  "*.toc",
+  "*.lof",
+  "*.lot",
+  "*.fdb_latexmk",
+  "*.fls",
+  "*.synctex.gz",
+  "*.blg",
+  "*.run.xml",
+  "*.bcf",
+]
+paths = []
+
+[bash]
+dirs = [
+  "tmp",
+  "temp",
+]
+files = [
+  "*.tmp",
+  "*.temp",
+  ".DS_Store",
+  "Thumbs.db",
+  "*.swp",
+  "*.swo",
+  "*~",
+  ".*.un~",
+]
+paths = []
