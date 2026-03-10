@@ -1,0 +1,101 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 800 640" width="800" height="640">
+<style>
+  :root {
+    --bg:          #e7e2d8;
+    --ink:         #222;
+    --ink-strong:  #111;
+    --border:      #333;
+    --blue-stroke: #3355aa;
+    --blue-fill:   rgba(100,140,220,0.15);
+    --red-stroke:  #aa3333;
+    --red-fill:    rgba(220,100,100,0.15);
+    --green-stroke:#2b8a57;
+    --green-fill:  rgba(70,170,110,0.12);
+    --green-cap:   #2b8a57;
+    --blue-cap:    #3355aa;
+    --red-cap:     #aa3333;
+    --purple-cap:  #7733aa;
+  }
+  @media (prefers-color-scheme: dark) {
+    :root {
+      --bg:          #1a1f27;
+      --ink:         #cdd9e5;
+      --ink-strong:  #e6edf3;
+      --border:      #8b949e;
+      --blue-stroke: #6688dd;
+      --blue-fill:   rgba(100,140,220,0.18);
+      --red-stroke:  #dd6666;
+      --red-fill:    rgba(220,100,100,0.18);
+      --green-stroke:#6fd19a;
+      --green-fill:  rgba(95,190,135,0.14);
+      --green-cap:   #6fd19a;
+      --blue-cap:    #6688dd;
+      --red-cap:     #dd6666;
+      --purple-cap:  #bb77ee;
+    }
+  }
+</style>
+
+  <!-- world background -->
+  <rect x="0" y="0" width="800" height="640" fill="var(--bg)"/>
+  <rect x="1" y="1" width="798" height="638" rx="8" ry="8"
+        fill="none" stroke="var(--border)" stroke-width="2"/>
+
+  <!-- top box -->
+  <rect x="44" y="44" width="712" height="196" rx="6" ry="6"
+        fill="var(--green-fill)" stroke="var(--green-stroke)" stroke-width="2"/>
+
+  <!-- top box files -->
+  <g font-family="monospace" font-size="15" fill="var(--ink)">
+    <text x="60"  y="130">☐ README.md</text>
+    <text x="220" y="130">☐ main.py</text>
+    <text x="360" y="130">☐ config.example.yaml</text>
+    <text x="580" y="130">☐ uv.lock</text>
+  </g>
+
+  <!-- top box caption -->
+  <text x="400" y="255" text-anchor="middle"
+        font-family="sans-serif" font-size="13" font-weight="bold"
+        fill="var(--green-cap)">repository</text>
+
+  <!-- blue (left) box -->
+  <rect x="100" y="270" width="360" height="280" rx="6" ry="6"
+        fill="var(--blue-fill)" stroke="var(--blue-stroke)" stroke-width="2"/>
+
+  <!-- red (right) box -->
+  <rect x="300" y="310" width="360" height="200" rx="6" ry="6"
+        fill="var(--red-fill)" stroke="var(--red-stroke)" stroke-width="2"/>
+
+  <!-- left-only files -->
+  <g font-family="monospace" font-size="14" fill="var(--ink)">
+    <text x="120" y="340">☐ __pycache__</text>
+    <text x="120" y="375">☐ .uv-cache</text>
+    <text x="120" y="410">☐ .ruff_cache</text>
+  </g>
+
+  <!-- intersection files -->
+  <g font-family="monospace" font-size="14" fill="var(--ink)">
+    <text x="315" y="390">☐ data/</text>
+    <text x="315" y="425">☐ config.yaml</text>
+  </g>
+
+  <!-- right-only files -->
+  <g font-family="monospace" font-size="14" fill="var(--ink)">
+    <text x="475" y="340">☐ CLAUDE.md</text>
+    <text x="475" y="375">☐ scratch.py</text>
+    <text x="475" y="410">☐ notes.txt</text>
+  </g>
+
+  <!-- captions -->
+  <g font-family="sans-serif" font-size="13" font-weight="bold">
+    <text x="110" y="565" text-anchor="start"  fill="var(--blue-cap)"  >.gitignore</text>
+    <text x="380" y="525" text-anchor="middle" fill="var(--purple-cap)">user data</text>
+    <text x="650" y="525" text-anchor="end"    fill="var(--red-cap)"   >untracked</text>
+  </g>
+
+  <!-- world caption -->
+  <text x="400" y="602" text-anchor="middle"
+        font-family="sans-serif" font-size="20" font-weight="bold"
+        fill="var(--ink-strong)">py-project/</text>
+
+</svg>
