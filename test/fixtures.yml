@@ -44,21 +44,21 @@ projects:
       keep: [README.md, app.tsx, backend/app.py, package.json]
       rules:
         node:
-          node_modules:
+          node_modules/:
             matches: 1
             size: 30
         python:
-          .ruff_cache:
+          .ruff_cache/:
             matches: 1
             size: 5
-          .uv-cache:
+          .uv-cache/:
             matches: 1
             size: 7
-          __pycache__:
+          __pycache__/:
             matches: 1
             size: 11
         react:
-          dist:
+          dist/:
             matches: 1
             size: 19
       total:
@@ -90,13 +90,13 @@ projects:
       keep: [app.py, pyproject.toml]
       rules:
         python:
-          .pytest_cache:
+          .pytest_cache/:
             matches: 1
             size: 3
-          .uv-cache:
+          .uv-cache/:
             matches: 1
             size: 5
-          __pycache__:
+          __pycache__/:
             matches: 1
             size: 7
       total:

@@ -10,7 +10,7 @@ from gen import kondo
 from gen import refs
 from gen import tokei
 from gen.policy import DETECT
-from gen.policy import LITTER
+from gen.policy import PRUNE
 from gen.policy import SOURCE as POLICY
 from gen.policy import load
 
@@ -35,8 +35,8 @@ def merge(
 ) -> dict[str, dict[str, list[str]]]:
     merged: dict[str, dict[str, list[str]]] = {}
     for name in sorted(set(litter) | set(detect)):
-        current = {field: [] for field in LITTER + DETECT}
-        for field in LITTER:
+        current = {field: [] for field in PRUNE + DETECT}
+        for field in PRUNE:
             current[field] = litter.get(name, {}).get(field, [])
         for field in DETECT:
             current[field] = detect.get(name, {}).get(field, [])
@@ -65,9 +65,7 @@ def render(
             table.add("priority", priority[name])
         if require_ancestor.get(name, False):
             table.add("require-ancestor", True)
-        table.add("dirs", array(rule["dirs"]))
-        table.add("files", array(rule["files"]))
-        table.add("paths", array(rule["paths"]))
+        table.add("patterns", array(rule["patterns"]))
         if any(rule[field] for field in DETECT):
             detect_table = tomlkit.table()
             if rule["detect_files"]:

@@ -49,6 +49,21 @@ def _path_matches(path: str, pattern: str) -> bool:
     return fnmatch.fnmatchcase(path.strip("/"), pattern.strip("/"))
 
 
+def _rule_matches(name: str, relative: str, pattern: str, *, is_dir: bool) -> bool:
+    rule = pattern.strip()
+    if not rule:
+        return False
+
+    dir_only = rule.endswith("/")
+    if dir_only and not is_dir:
+        return False
+
+    target = rule.rstrip("/")
+    if "/" in target:
+        return _path_matches(relative, target)
+    return fnmatch.fnmatchcase(name, target)
+
+
 def _directory_size(path: Path) -> int:
     total = 0
     stack = [path.as_posix()]
@@ -115,13 +130,11 @@ class Index:
         self.file_map: dict[str, list[str]] = {}
         self.name_map: dict[str, list[str]] = {}
         self.head_types: list[str] = []
-        self.stop_dirs: list[tuple[str, ...]] = []
-        self.stop_paths: list[tuple[str, ...]] = []
+        self.stop_patterns: list[tuple[str, ...]] = []
 
         for name, rule in rules.items():
             if rule.priority == 0:
-                self.stop_dirs.append(rule.dirs)
-                self.stop_paths.append(rule.paths)
+                self.stop_patterns.append(rule.patterns)
 
             if name == "common":
                 continue
@@ -145,13 +158,9 @@ class Index:
                 self.head_types.append(name)
 
     def stopword(self, name: str, relative: str) -> bool:
-        for patterns in self.stop_paths:
+        for patterns in self.stop_patterns:
             for pattern in patterns:
-                if _path_matches(relative, pattern):
-                    return True
-        for patterns in self.stop_dirs:
-            for pattern in patterns:
-                if fnmatch.fnmatchcase(name, pattern):
+                if _rule_matches(name, relative, pattern, is_dir=True):
                     return True
         return False
 
@@ -295,48 +304,33 @@ class Matcher:
     def _dir(self, path: Path, name: str, relative: str) -> bool:
         for type_name in self.selected:
             rule = self.rules[type_name]
-            for pattern in rule.paths:
-                if _path_matches(relative, pattern):
-                    if not self._allowed(path, type_name, True):
-                        continue
-                    self._add(path, "dir", type_name, pattern)
-                    return True
-            for pattern in rule.dirs:
-                if fnmatch.fnmatchcase(name, pattern):
-                    if not self._allowed(path, type_name, True):
-                        continue
-                    self._add(path, "dir", type_name, pattern)
-                    return True
+            for pattern in rule.patterns:
+                if not _rule_matches(name, relative, pattern, is_dir=True):
+                    continue
+                if not self._allowed(path, type_name, True):
+                    continue
+                self._add(path, "dir", type_name, pattern)
+                return True
         return False
 
     def _file(self, path: Path, name: str, relative: str) -> None:
         for type_name in self.selected:
             rule = self.rules[type_name]
-            for pattern in rule.paths:
-                if _path_matches(relative, pattern):
-                    if not self._allowed(path, type_name, False):
-                        continue
-                    self._add(path, "file", type_name, pattern)
-                    return
-            for pattern in rule.files:
-                if fnmatch.fnmatchcase(name, pattern):
-                    if not self._allowed(path, type_name, False):
-                        continue
-                    self._add(path, "file", type_name, pattern)
-                    return
+            for pattern in rule.patterns:
+                if not _rule_matches(name, relative, pattern, is_dir=False):
+                    continue
+                if not self._allowed(path, type_name, False):
+                    continue
+                self._add(path, "file", type_name, pattern)
+                return
 
     def _stopword(self, path: Path, relative: str) -> bool:
         for type_name in self.selected:
             rule = self.rules[type_name]
-            for pattern in rule.paths:
-                if _path_matches(relative, pattern) and self._allowed(
-                    path, type_name, True
-                ):
-                    return True
-            for pattern in rule.dirs:
-                if fnmatch.fnmatchcase(path.name, pattern) and self._allowed(
-                    path, type_name, True
-                ):
+            for pattern in rule.patterns:
+                if not _rule_matches(path.name, relative, pattern, is_dir=True):
+                    continue
+                if self._allowed(path, type_name, True):
                     return True
         return False
 

@@ -1,47 +1,37 @@
 [cabal]
-dirs = ["dist-newstyle"]
-files = []
-paths = []
+patterns = ["dist-newstyle/"]
 
 [cabal.detect]
 suffix = [".cabal"]
 
 [cargo]
 priority = 0
-dirs = [
-    "target",
-    ".xwin-cache",
+patterns = [
+    "target/",
+    ".xwin-cache/",
 ]
-files = []
-paths = []
 
 [cargo.detect]
 suffix = [".rs"]
 
 [cmake]
-dirs = [
-    "build",
-    "cmake-build-debug",
-    "cmake-build-release",
+patterns = [
+    "build/",
+    "cmake-build-debug/",
+    "cmake-build-release/",
 ]
-files = []
-paths = []
 
 [cmake.detect]
 suffix = [".cmake"]
 names = ["cmakelists.txt"]
 
 [cocoapods]
-dirs = ["Pods"]
-files = []
-paths = []
+patterns = ["Pods/"]
 
 [common]
-dirs = [
-    "tmp",
-    "temp",
-]
-files = [
+patterns = [
+    "tmp/",
+    "temp/",
     "*.tmp",
     "*.temp",
     ".DS_Store",
@@ -51,23 +41,18 @@ files = [
     "*~",
     ".*.un~",
 ]
-paths = []
 
 [composer]
-dirs = ["vendor"]
-files = []
-paths = []
+patterns = ["vendor/"]
 
 [composer.detect]
 suffix = [".php"]
 
 [dotnet]
-dirs = [
-    "bin",
-    "obj",
+patterns = [
+    "bin/",
+    "obj/",
 ]
-files = []
-paths = []
 
 [dotnet.detect]
 suffix = [
@@ -85,14 +70,12 @@ suffix = [
 ]
 
 [elixir]
-dirs = [
-    "_build",
-    ".elixir-tools",
-    ".elixir_ls",
-    ".lexical",
+patterns = [
+    "_build/",
+    ".elixir-tools/",
+    ".elixir_ls/",
+    ".lexical/",
 ]
-files = []
-paths = []
 
 [elixir.detect]
 suffix = [
@@ -101,9 +84,7 @@ suffix = [
 ]
 
 [godot4]
-dirs = [".godot"]
-files = []
-paths = []
+patterns = [".godot/"]
 
 [godot4.detect]
 suffix = [
@@ -113,12 +94,10 @@ suffix = [
 ]
 
 [gradle]
-dirs = [
-    "build",
-    ".gradle",
+patterns = [
+    "build/",
+    ".gradle/",
 ]
-files = []
-paths = []
 
 [gradle.detect]
 suffix = [
@@ -133,17 +112,15 @@ suffix = [
 env = ["groovy"]
 
 [jupyter]
-dirs = [".ipynb_checkpoints"]
-files = []
-paths = []
+patterns = [".ipynb_checkpoints/"]
 
 [jupyter.detect]
 suffix = [".ipynb"]
 
 [latex]
 require-ancestor = true
-dirs = ["_minted-*"]
-files = [
+patterns = [
+    "_minted-*/",
     "*.aux",
     "*.log",
     "*.out",
@@ -157,7 +134,6 @@ files = [
     "*.run.xml",
     "*.bcf",
 ]
-paths = []
 
 [latex.detect]
 suffix = [
@@ -166,21 +142,17 @@ suffix = [
 ]
 
 [maven]
-dirs = ["target"]
-files = []
-paths = []
+patterns = ["target/"]
 
 [maven.detect]
 suffix = [".java"]
 
 [node]
 priority = 0
-dirs = [
-    "node_modules",
-    ".angular",
+patterns = [
+    "node_modules/",
+    ".angular/",
 ]
-files = []
-paths = []
 
 [node.detect]
 suffix = [
@@ -198,9 +170,7 @@ shebang = [
 ]
 
 [pixi]
-dirs = [".pixi"]
-files = []
-paths = []
+patterns = [".pixi/"]
 
 [pixi.detect]
 suffix = [
@@ -215,14 +185,11 @@ env = [
 ]
 
 [pub]
-dirs = [
-    "build",
-    ".dart_tool",
-]
-files = []
-paths = [
-    "linux/flutter/ephemeral",
-    "windows/flutter/ephemeral",
+patterns = [
+    "build/",
+    ".dart_tool/",
+    "linux/flutter/ephemeral/",
+    "windows/flutter/ephemeral/",
 ]
 
 [pub.detect]
@@ -230,23 +197,23 @@ suffix = [".dart"]
 
 [python]
 priority = 0
-dirs = [
-    ".mypy_cache",
-    ".nox",
-    ".pytest_cache",
-    ".ruff_cache",
-    ".tox",
-    "__pycache__",
-    "__pypackages__",
-    "venv",
-    ".venv",
-    "env",
-    ".env",
-    ".uv-cache",
-    "build",
+patterns = [
+    ".mypy_cache/",
+    ".nox/",
+    ".pytest_cache/",
+    ".ruff_cache/",
+    ".tox/",
+    "__pycache__/",
+    "__pypackages__/",
+    "venv/",
+    ".venv/",
+    "env/",
+    ".env/",
+    ".uv-cache/",
+    ".uv-cache/**",
+    "build/",
+    "*.pyc",
 ]
-files = ["*.pyc"]
-paths = [".uv-cache/**"]
 
 [python.detect]
 suffix = [
@@ -261,14 +228,12 @@ env = [
 ]
 
 [react]
-dirs = [
-    "dist",
-    "build",
-    "coverage",
-    ".next",
+patterns = [
+    "dist/",
+    "build/",
+    "coverage/",
+    ".next/",
 ]
-files = []
-paths = []
 
 [react.detect]
 suffix = [
@@ -277,18 +242,15 @@ suffix = [
 ]
 
 [reactnative]
-dirs = [
-    "node_modules",
-    ".expo",
-    ".metro",
-]
-files = []
-paths = [
-    "android/build",
-    "android/.gradle",
-    "ios/build",
-    "ios/DerivedData",
-    "ios/Pods",
+patterns = [
+    "node_modules/",
+    "android/build/",
+    "android/.gradle/",
+    "ios/build/",
+    "ios/DerivedData/",
+    "ios/Pods/",
+    ".expo/",
+    ".metro/",
 ]
 
 [reactnative.detect]
@@ -304,9 +266,10 @@ suffix = [
 ]
 
 [sbt]
-dirs = ["target"]
-files = []
-paths = ["project/target"]
+patterns = [
+    "target/",
+    "project/target/",
+]
 
 [sbt.detect]
 suffix = [
@@ -315,28 +278,22 @@ suffix = [
 ]
 
 [stack]
-dirs = [".stack-work"]
-files = []
-paths = []
+patterns = [".stack-work/"]
 
 [stack.detect]
 suffix = [".hs"]
 
 [swift]
-dirs = [
-    ".build",
-    ".swiftpm",
+patterns = [
+    ".build/",
+    ".swiftpm/",
 ]
-files = []
-paths = []
 
 [swift.detect]
 suffix = [".swift"]
 
 [terraform]
-dirs = [".terraform"]
-files = []
-paths = []
+patterns = [".terraform/"]
 
 [terraform.detect]
 suffix = [
@@ -346,9 +303,7 @@ suffix = [
 ]
 
 [turborepo]
-dirs = [".turbo"]
-files = []
-paths = []
+patterns = [".turbo/"]
 
 [turborepo.detect]
 suffix = [
@@ -363,17 +318,15 @@ suffix = [
 ]
 
 [unity]
-dirs = [
-    "Library",
-    "Temp",
-    "Obj",
-    "Logs",
-    "MemoryCaptures",
-    "Build",
-    "Builds",
+patterns = [
+    "Library/",
+    "Temp/",
+    "Obj/",
+    "Logs/",
+    "MemoryCaptures/",
+    "Build/",
+    "Builds/",
 ]
-files = []
-paths = []
 
 [unity.detect]
 suffix = [
@@ -382,15 +335,13 @@ suffix = [
 ]
 
 [unreal]
-dirs = [
-    "Binaries",
-    "Build",
-    "Saved",
-    "DerivedDataCache",
-    "Intermediate",
+patterns = [
+    "Binaries/",
+    "Build/",
+    "Saved/",
+    "DerivedDataCache/",
+    "Intermediate/",
 ]
-files = []
-paths = []
 
 [unreal.detect]
 suffix = [
@@ -402,13 +353,11 @@ suffix = [
 ]
 
 [zig]
-dirs = [
-    "zig-cache",
-    ".zig-cache",
-    "zig-out",
+patterns = [
+    "zig-cache/",
+    ".zig-cache/",
+    "zig-out/",
 ]
-files = []
-paths = []
 
 [zig.detect]
 suffix = [".zig"]

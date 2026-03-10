@@ -6,7 +6,7 @@ import sys
 import tomlkit
 from tomlkit.items import Array
 
-from gen.policy import LITTER
+from gen.policy import PRUNE
 from gen.policy import SOURCE as POLICY
 from gen.policy import load
 
@@ -76,17 +76,13 @@ def parse(text: str) -> dict[str, dict[str, list[str]]]:
         )
         slug = ALIASES.get(slug, slug)
         rules[slug] = {
-            "dirs": [item for item in items if "/" not in item],
-            "files": [],
-            "paths": [item for item in items if "/" in item],
+            "patterns": [f"{item.rstrip('/')}/" for item in items],
         }
     for project in NAMES.values():
         rules.setdefault(
             project,
             {
-                "dirs": [],
-                "files": [],
-                "paths": [],
+                "patterns": [],
             },
         )
 
@@ -98,20 +94,20 @@ def merge(
 ) -> dict[str, dict[str, list[str]]]:
     merged: dict[str, dict[str, list[str]]] = {}
     for name, rule in load(policy_path).items():
-        current = {field: [] for field in LITTER}
+        current = {field: [] for field in PRUNE}
         for key in rule.kondo:
-            for field in LITTER:
+            for field in PRUNE:
                 for item in base.get(key, {}).get(field, []):
                     if item not in current[field]:
                         current[field].append(item)
         for field, items in rule.add.items():
-            if field not in LITTER:
+            if field not in PRUNE:
                 continue
             for item in items:
                 if item not in current[field]:
                     current[field].append(item)
-        for field, items in rule.drop.items():
-            if field not in LITTER:
+        for field, items in rule.rm.items():
+            if field not in PRUNE:
                 continue
             current[field] = [item for item in current[field] if item not in items]
         merged[name] = current
@@ -131,9 +127,7 @@ def render(rules: dict[str, dict[str, list[str]]]) -> str:
     doc = tomlkit.document()
     for name, rule in rules.items():
         table = tomlkit.table()
-        table.add("dirs", array(rule["dirs"]))
-        table.add("files", array(rule["files"]))
-        table.add("paths", array(rule["paths"]))
+        table.add("patterns", array(rule["patterns"]))
         doc.add(name, table)
     return tomlkit.dumps(doc)
 

@@ -64,7 +64,7 @@ def merge(
             for item in items:
                 if item not in current[field]:
                     current[field].append(item)
-        for field, items in rule.drop.items():
+        for field, items in rule.rm.items():
             if not field.startswith("detect_"):
                 continue
             current[field] = [item for item in current[field] if item not in items]

@@ -49,7 +49,7 @@ Keep fixtures reduced. They should prove one rule family or one detection edge w
 - dry-run and delete behavior
 - prompt and short-output behavior
 - empty-result messaging
-- local `dil.toml` loading, additive overrides, rule drops, and detector suppression
+- local `dil.toml` loading, additive overrides, rule removal, and detector suppression
 
 The harness also pins `HOME` to a test directory so user-level config does not leak into the suite.
 
@@ -65,6 +65,6 @@ When testing local overrides, prefer putting a small `dil.toml` into the fixture
 Use the same policy shape that the repo-level `dil.toml` uses:
 
 - `[type.<name>.add]` for local additions
-- `[type.<name>.drop]` for local removals and detector suppression
+- `[type.<name>.rm]` for local removals and detector suppression
 
 That keeps runtime config and repo policy aligned instead of creating two parallel configuration styles.

@@ -35,9 +35,9 @@ For example, [Go](https://github.com/golang/go) is still missing from the genera
 priority = 0
 
 [type.go.add]
-dirs = ["bin"]
-files = ["coverage.out"]
-paths = [
+patterns = [
+  "bin/",
+  "coverage.out",
   "data/cache/**",
   "data/tmp/**",
 ]
@@ -58,7 +58,7 @@ The most useful way to read the schema is:
 
 - `type.<name>` defines or patches a type
 - `.add` extends that type
-- `.drop` removes inherited members from that type
+- `.rm` removes inherited members from that type
 - detector fields only affect activation, not prune targets directly
 
 ## Type Table
@@ -76,34 +76,18 @@ The most useful way to read the schema is:
 | Key | Where | Meaning |
 | --- | --- | --- |
 | `type.<name>.add` | repo policy, local `dil.toml` | add litter rules and detector signals to this type |
-| `type.<name>.drop` | repo policy, local `dil.toml` | remove inherited litter rules and detector signals from this type |
+| `type.<name>.rm` | repo policy, local `dil.toml` | remove inherited litter rules and detector signals from this type |
 
-## Fields Inside `.add` And `.drop`
+## Fields Inside `.add` And `.rm`
 
 | Key | Meaning |
 | --- | --- |
-| `dirs` | directory-name globs to match or remove from the type |
-| `files` | file basename globs to match or remove from the type |
-| `paths` | relative path globs to match or remove from the type |
+| `patterns` | gitignore-like prune patterns; `bin/` is dir-only, `*.pyc` is basename-based, and `data/cache/**` is path-based |
 | `detect_files` | exact filenames that help activate the type |
 | `detect_suffix` | file suffixes that help activate the type |
 | `detect_names` | case-insensitive filenames that help activate the type |
 | `detect_env` | shebang env names that help activate the type |
 | `detect_shebang` | exact shebang lines that help activate the type |
-
-## Runtime Flat Patch Shape
-
-Runtime also accepts a flatter patch form through [`../dil/config.py`](../dil/config.py):
-
-| Key | Where | Meaning |
-| --- | --- | --- |
-| `<name>` | local `dil.toml`, user config | flat patch form for a type |
-| `dirs`, `files`, `paths` | flat patch form | additive patch fields |
-| `detect` | flat patch form | additive detector patch |
-| `drop-dirs`, `drop-files`, `drop-paths` | flat patch form | subtract inherited litter matchers |
-| `suppress-detect` | flat patch form | subtract inherited detector signals |
-
-This works, but it is harder to explain. The policy-shaped form is the better one to document and recommend.
 
 ## Override Order
 

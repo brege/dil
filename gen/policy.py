@@ -6,7 +6,7 @@ import tomllib
 
 ROOT = Path(__file__).resolve().parent.parent
 SOURCE = ROOT / "dil.toml"
-LITTER = ("dirs", "files", "paths")
+PRUNE = ("patterns",)
 DETECT = (
     "detect_files",
     "detect_suffix",
@@ -14,7 +14,7 @@ DETECT = (
     "detect_env",
     "detect_shebang",
 )
-FIELDS = LITTER + DETECT
+FIELDS = PRUNE + DETECT
 
 
 @dataclass(frozen=True)
@@ -24,7 +24,7 @@ class Type:
     kondo: tuple[str, ...]
     tokei: tuple[str, ...]
     add: dict[str, tuple[str, ...]]
-    drop: dict[str, tuple[str, ...]]
+    rm: dict[str, tuple[str, ...]]
 
 
 def blank() -> dict[str, list[str]]:
@@ -83,6 +83,6 @@ def load(path: Path = SOURCE) -> dict[str, Type]:
             kondo=_list(value.get("kondo", []), f"{path}:{name}", "kondo"),
             tokei=_list(value.get("tokei", []), f"{path}:{name}", "tokei"),
             add=_table(value.get("add", {}), f"{path}:{name}.add"),
-            drop=_table(value.get("drop", {}), f"{path}:{name}.drop"),
+            rm=_table(value.get("rm", {}), f"{path}:{name}.rm"),
         )
     return dict(sorted(rules.items()))

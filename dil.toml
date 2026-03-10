@@ -20,11 +20,9 @@ kondo = []
 tokei = []
 
 [type.common.add]
-dirs = [
-  "tmp",
-  "temp",
-]
-files = [
+patterns = [
+  "tmp/",
+  "temp/",
   "*.tmp",
   "*.temp",
   ".DS_Store",
@@ -34,7 +32,6 @@ files = [
   "*~",
   ".*.un~",
 ]
-paths = []
 
 [type.composer]
 kondo = ["composer"]
@@ -66,8 +63,8 @@ kondo = []
 tokei = ["Tex"]
 
 [type.latex.add]
-dirs = ["_minted-*"]
-files = [
+patterns = [
+  "_minted-*/",
   "*.aux",
   "*.log",
   "*.out",
@@ -81,7 +78,6 @@ files = [
   "*.run.xml",
   "*.bcf",
 ]
-paths = []
 
 [type.maven]
 kondo = ["maven"]
@@ -113,30 +109,28 @@ kondo = ["python"]
 tokei = ["Python"]
 
 [type.python.add]
-dirs = [
-  "venv",
-  ".venv",
-  "env",
-  ".env",
-  ".uv-cache",
-  "build",
+patterns = [
+  "venv/",
+  ".venv/",
+  "env/",
+  ".env/",
+  ".uv-cache/",
+  ".uv-cache/**",
+  "build/",
+  "*.pyc",
 ]
-files = ["*.pyc"]
-paths = [".uv-cache/**"]
 
 [type.react]
 kondo = []
 tokei = ["Jsx", "Tsx"]
 
 [type.react.add]
-dirs = [
-  "dist",
-  "build",
-  "coverage",
-  ".next",
+patterns = [
+  "dist/",
+  "build/",
+  "coverage/",
+  ".next/",
 ]
-files = []
-paths = []
 
 [type.reactnative]
 kondo = ["reactnative"]

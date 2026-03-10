@@ -8,6 +8,16 @@ from typing import cast
 from pydantic import BaseModel, ConfigDict, Field, ValidationError
 
 
+POLICY_FIELDS = (
+    "patterns",
+    "detect_files",
+    "detect_suffix",
+    "detect_names",
+    "detect_env",
+    "detect_shebang",
+)
+
+
 class DetectRules(BaseModel):
     model_config = ConfigDict(extra="forbid", frozen=True)
 
@@ -17,15 +27,36 @@ class DetectRules(BaseModel):
     env: tuple[str, ...] = ()
     shebang: tuple[str, ...] = ()
 
-    def merge(self, other: DetectRules, drop: DetectRules) -> DetectRules:
+    def merge(self, other: DetectRules, removed: DetectRules) -> DetectRules:
         return self.model_copy(
             update={
-                "files": _merge_values(self.files, other.files, drop.files),
-                "suffix": _merge_values(self.suffix, other.suffix, drop.suffix),
-                "names": _merge_values(self.names, other.names, drop.names),
-                "env": _merge_values(self.env, other.env, drop.env),
-                "shebang": _merge_values(self.shebang, other.shebang, drop.shebang),
+                "files": _merge_values(self.files, other.files, removed.files),
+                "suffix": _merge_values(self.suffix, other.suffix, removed.suffix),
+                "names": _merge_values(self.names, other.names, removed.names),
+                "env": _merge_values(self.env, other.env, removed.env),
+                "shebang": _merge_values(self.shebang, other.shebang, removed.shebang),
             }
+        )
+
+
+class PatchRules(BaseModel):
+    model_config = ConfigDict(extra="forbid", frozen=True)
+
+    patterns: tuple[str, ...] = ()
+    detect_files: tuple[str, ...] = ()
+    detect_suffix: tuple[str, ...] = ()
+    detect_names: tuple[str, ...] = ()
+    detect_env: tuple[str, ...] = ()
+    detect_shebang: tuple[str, ...] = ()
+
+    @property
+    def detect(self) -> DetectRules:
+        return DetectRules(
+            files=self.detect_files,
+            suffix=self.detect_suffix,
+            names=self.detect_names,
+            env=self.detect_env,
+            shebang=self.detect_shebang,
         )
 
 
@@ -34,9 +65,7 @@ class TypeRules(BaseModel):
 
     priority: int = 99
     require_ancestor: bool = Field(False, alias="require-ancestor")
-    dirs: tuple[str, ...] = ()
-    files: tuple[str, ...] = ()
-    paths: tuple[str, ...] = ()
+    patterns: tuple[str, ...] = ()
     detect: DetectRules = DetectRules()
 
     @property
@@ -65,16 +94,8 @@ class TypePatch(BaseModel):
 
     priority: int | None = None
     require_ancestor: bool | None = Field(None, alias="require-ancestor")
-    dirs: tuple[str, ...] = ()
-    files: tuple[str, ...] = ()
-    paths: tuple[str, ...] = ()
-    detect: DetectRules = DetectRules()
-    drop_dirs: tuple[str, ...] = Field((), alias="drop-dirs")
-    drop_files: tuple[str, ...] = Field((), alias="drop-files")
-    drop_paths: tuple[str, ...] = Field((), alias="drop-paths")
-    suppress_detect: DetectRules = Field(
-        default_factory=DetectRules, alias="suppress-detect"
-    )
+    add: PatchRules = Field(default_factory=PatchRules)
+    rm: PatchRules = Field(default_factory=PatchRules)
 
     def apply(self, base: TypeRules | None) -> TypeRules:
         current = base or TypeRules()
@@ -88,30 +109,18 @@ class TypePatch(BaseModel):
                     if self.require_ancestor is None
                     else self.require_ancestor
                 ),
-                "dirs": _merge_values(current.dirs, self.dirs, self.drop_dirs),
-                "files": _merge_values(current.files, self.files, self.drop_files),
-                "paths": _merge_values(current.paths, self.paths, self.drop_paths),
-                "detect": current.detect.merge(self.detect, self.suppress_detect),
+                "patterns": _merge_values(
+                    current.patterns, self.add.patterns, self.rm.patterns
+                ),
+                "detect": current.detect.merge(self.add.detect, self.rm.detect),
             }
         )
 
 
-POLICY_FIELDS = (
-    "dirs",
-    "files",
-    "paths",
-    "detect_files",
-    "detect_suffix",
-    "detect_names",
-    "detect_env",
-    "detect_shebang",
-)
-
-
 def _merge_values(
-    base: tuple[str, ...], add: tuple[str, ...], drop: tuple[str, ...]
+    base: tuple[str, ...], add: tuple[str, ...], removed: tuple[str, ...]
 ) -> tuple[str, ...]:
-    blocked = set(drop)
+    blocked = set(removed)
     merged: list[str] = []
     seen: set[str] = set()
     for item in (*base, *add):
@@ -138,15 +147,6 @@ def _config_candidates(root: Path) -> list[Path]:
         candidates.append(local)
 
     return candidates
-
-
-def _coerce_patch(name: str, value: object, source: str) -> TypePatch:
-    if not isinstance(value, dict):
-        raise ValueError(f"invalid rule table in {source}")
-    try:
-        return TypePatch.model_validate(value)
-    except ValidationError as err:
-        raise ValueError(f"{source}: invalid {name} rules") from err
 
 
 def _load_builtin() -> dict[str, TypeRules]:
@@ -182,7 +182,27 @@ def _policy_table(value: object, source: str, field: str) -> dict[str, tuple[str
     return loaded
 
 
-def _load_policy_patches(path: Path, raw: dict[str, object]) -> dict[str, TypePatch]:
+def _patch_from_table(path: Path, name: str, value: object) -> TypePatch:
+    if not isinstance(value, dict):
+        raise ValueError(f"invalid type entry in {path}: {name}")
+    table = cast(dict[str, object], value)
+    add = _policy_table(table.get("add"), str(path), f"{name}.add")
+    removed = _policy_table(table.get("rm"), str(path), f"{name}.rm")
+    try:
+        return TypePatch.model_validate(
+            {
+                "priority": table.get("priority"),
+                "require-ancestor": table.get("require-ancestor"),
+                "add": add,
+                "rm": removed,
+            }
+        )
+    except ValidationError as err:
+        raise ValueError(f"{path}: invalid {name} rules") from err
+
+
+def _load_patches(path: Path) -> dict[str, TypePatch]:
+    raw = _load_toml(path)
     types = raw.get("type")
     if not isinstance(types, dict):
         raise ValueError(f"invalid type table in {path}")
@@ -190,51 +210,7 @@ def _load_policy_patches(path: Path, raw: dict[str, object]) -> dict[str, TypePa
 
     loaded: dict[str, TypePatch] = {}
     for name, value in type_map.items():
-        if not isinstance(value, dict):
-            raise ValueError(f"invalid type entry in {path}: {name}")
-        table = cast(dict[str, object], value)
-        add = _policy_table(table.get("add"), str(path), f"{name}.add")
-        drop = _policy_table(table.get("drop"), str(path), f"{name}.drop")
-        try:
-            loaded[name] = TypePatch.model_validate(
-                {
-                    "priority": table.get("priority"),
-                    "require-ancestor": table.get("require-ancestor"),
-                    "dirs": add["dirs"],
-                    "files": add["files"],
-                    "paths": add["paths"],
-                    "detect": {
-                        "files": add["detect_files"],
-                        "suffix": add["detect_suffix"],
-                        "names": add["detect_names"],
-                        "env": add["detect_env"],
-                        "shebang": add["detect_shebang"],
-                    },
-                    "drop-dirs": drop["dirs"],
-                    "drop-files": drop["files"],
-                    "drop-paths": drop["paths"],
-                    "suppress-detect": {
-                        "files": drop["detect_files"],
-                        "suffix": drop["detect_suffix"],
-                        "names": drop["detect_names"],
-                        "env": drop["detect_env"],
-                        "shebang": drop["detect_shebang"],
-                    },
-                }
-            )
-        except ValidationError as err:
-            raise ValueError(f"{path}: invalid {name} rules") from err
-    return loaded
-
-
-def _load_patches(path: Path) -> dict[str, TypePatch]:
-    raw = _load_toml(path)
-    if "type" in raw:
-        return _load_policy_patches(path, raw)
-
-    loaded: dict[str, TypePatch] = {}
-    for name, value in raw.items():
-        loaded[name] = _coerce_patch(name, value, str(path))
+        loaded[name] = _patch_from_table(path, name, value)
     return loaded
 
 

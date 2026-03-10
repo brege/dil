@@ -15,7 +15,7 @@ If you work in another language, framework, or build tool, the best contribution
 
 For the generator pipeline, policy hierarchy, schema tables, and local `dil.toml` examples, see [Generator and Policy](../gen/README.md).
 
-Run the generator pipeline with `uv run rules`.
+Run the generator pipeline with `uv run python gen/rules.py`.
 
 ## Testing
 

@@ -222,11 +222,11 @@ def test_repo_dil_toml_loads(tmp_path: Path, monkeypatch: pytest.MonkeyPatch) ->
     ruleset = load_rules(ROOT)
 
     assert "python" in ruleset
-    assert ruleset["python"].dirs.count(".uv-cache") == 1
+    assert ruleset["python"].patterns.count(".uv-cache/") == 1
     assert ruleset["node"].detect_env.count("node") == 1
 
 
-def test_local_dil_toml_add_and_drop(tmp_path: Path) -> None:
+def test_local_dil_toml_add_and_rm(tmp_path: Path) -> None:
     root, _ = make_case(tmp_path, "python")
     extra = root / ".cachekeep"
     extra.mkdir()
@@ -234,12 +234,10 @@ def test_local_dil_toml_add_and_drop(tmp_path: Path) -> None:
     (root / "dil.toml").write_text(
         (
             "[type.python.add]\n"
-            'dirs = [".cachekeep"]\n'
+            'patterns = [".cachekeep/"]\n'
             "\n"
-            "[type.python.drop]\n"
-            'dirs = [".pytest_cache", "__pycache__", ".uv-cache"]\n'
-            'files = ["*.pyc"]\n'
-            'paths = [".uv-cache/**"]\n'
+            "[type.python.rm]\n"
+            'patterns = [".pytest_cache/", "__pycache__/", ".uv-cache/", ".uv-cache/**", "*.pyc"]\n'
         ),
         encoding="utf-8",
     )
@@ -256,7 +254,7 @@ def test_local_dil_toml_suppress_detect(tmp_path: Path) -> None:
     root, _ = make_case(tmp_path, "python")
     (root / "dil.toml").write_text(
         (
-            "[type.python.drop]\n"
+            "[type.python.rm]\n"
             'detect_suffix = [".py", ".pyw", ".pyi"]\n'
             'detect_env = ["python", "python2", "python3"]\n'
         ),
@@ -284,12 +282,12 @@ def test_rules(tmp_path: Path) -> None:
 
     assert data["python"]["priority"] == 0
     assert data["latex"]["require-ancestor"] is True
-    assert "__pycache__" in data["python"]["dirs"]
-    assert ".pytest_cache" in data["python"]["dirs"]
-    assert "*.pyc" in data["python"]["files"]
-    assert "node_modules" in data["node"]["dirs"]
-    assert "project/target" in data["sbt"]["paths"]
-    assert "*.aux" in data["latex"]["files"]
+    assert "__pycache__/" in data["python"]["patterns"]
+    assert ".pytest_cache/" in data["python"]["patterns"]
+    assert "*.pyc" in data["python"]["patterns"]
+    assert "node_modules/" in data["node"]["patterns"]
+    assert "project/target/" in data["sbt"]["patterns"]
+    assert "*.aux" in data["latex"]["patterns"]
 
 
 def test_detect(tmp_path: Path) -> None:
