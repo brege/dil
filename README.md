@@ -138,7 +138,7 @@ This provides a global `dil.toml` file that can be overridden or augmented for a
 
 ## Contributing
 
-See [CONTRIBUTING.md](./CONTRIBUTING.md) if you want to help refine litter rules, detector mappings, or fixture coverage.
+See [Contributing](docs/contributing.md) if you want to help refine litter rules, detector mappings, or fixture coverage.
 
 
 ## License

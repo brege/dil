@@ -9,6 +9,7 @@ import tomllib
 
 import pytest
 
+from dil.config import load_rules
 from gen import kondo
 from gen.policy import load as load_policy
 from gen import rules
@@ -20,6 +21,7 @@ from . import setup
 ROOT = Path(__file__).resolve().parents[1]
 PYTHON = shutil.which("python3") or "python3"
 CASES = tuple(cast(dict[str, Any], setup.load()["projects"]))
+HOME = Path("/tmp/dil-test-home")
 
 
 def run(
@@ -32,7 +34,7 @@ def run(
         text=True,
         capture_output=True,
         input=stdin,
-        env={"PYTHONPATH": str(ROOT)},
+        env={"HOME": str(HOME), "PYTHONPATH": str(ROOT)},
         check=False,
     )
 
@@ -213,6 +215,60 @@ def test_empty_output_message(tmp_path: Path, args: tuple[str, ...]) -> None:
     assert result.stdout.strip() == "No files detected to delete."
     assert result.stderr == ""
     assert_kept(root, cast(list[str], expect["keep"]))
+
+
+def test_repo_dil_toml_loads(tmp_path: Path, monkeypatch: pytest.MonkeyPatch) -> None:
+    monkeypatch.setenv("HOME", str(tmp_path / "home"))
+    ruleset = load_rules(ROOT)
+
+    assert "python" in ruleset
+    assert ruleset["python"].dirs.count(".uv-cache") == 1
+    assert ruleset["node"].detect_env.count("node") == 1
+
+
+def test_local_dil_toml_add_and_drop(tmp_path: Path) -> None:
+    root, _ = make_case(tmp_path, "python")
+    extra = root / ".cachekeep"
+    extra.mkdir()
+    (extra / "cache.bin").write_bytes(b"x")
+    (root / "dil.toml").write_text(
+        (
+            "[type.python.add]\n"
+            'dirs = [".cachekeep"]\n'
+            "\n"
+            "[type.python.drop]\n"
+            'dirs = [".pytest_cache", "__pycache__", ".uv-cache"]\n'
+            'files = ["*.pyc"]\n'
+            'paths = [".uv-cache/**"]\n'
+        ),
+        encoding="utf-8",
+    )
+
+    payload = run_json(str(root))
+
+    assert payload["types"] == ["python"]
+    assert [
+        cast(str, row["path"]) for row in cast(list[dict[str, Any]], payload["matches"])
+    ] == [".cachekeep/"]
+
+
+def test_local_dil_toml_suppress_detect(tmp_path: Path) -> None:
+    root, _ = make_case(tmp_path, "python")
+    (root / "dil.toml").write_text(
+        (
+            "[type.python.drop]\n"
+            'detect_suffix = [".py", ".pyw", ".pyi"]\n'
+            'detect_env = ["python", "python2", "python3"]\n'
+        ),
+        encoding="utf-8",
+    )
+
+    payload = run_json(str(root))
+
+    assert payload["types"] == []
+    assert payload["matches"] == []
+    assert payload["rules"] == []
+    assert payload["total"] == {"matches": 0, "size": 0}
 
 
 def test_rules(tmp_path: Path) -> None:
