@@ -37,6 +37,10 @@ def size(value: int) -> str:
 
 
 def litter(console: Console, rows: list[LitterRow]) -> None:
+    if not rows:
+        console.print("No files detected to delete.")
+        return
+
     table = Table(box=TOKEI, show_footer=True, pad_edge=False)
     table.add_column("Type", footer="Total")
     table.add_column("Rule")
@@ -61,6 +65,10 @@ def litter(console: Console, rows: list[LitterRow]) -> None:
 
 
 def scan(console: Console, rows: list[ScanRow]) -> None:
+    if not rows:
+        console.print("No files detected to delete.")
+        return
+
     table = Table(box=TOKEI, pad_edge=False)
     table.add_column("Type")
     table.add_column("Rule")

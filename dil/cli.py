@@ -18,15 +18,28 @@ def build_parser() -> argparse.ArgumentParser:
     parser = argparse.ArgumentParser(
         prog="dil", description="Detect and prune disposable project litter"
     )
-    parser.add_argument("path", nargs="?", default=".")
-    parser.add_argument("--type", dest="types", action="append")
-    parser.add_argument("-p", "--paths", action="store_true")
-    parser.add_argument("-P", "--absolute-paths", action="store_true")
-    parser.add_argument("-d", "--delete", action="store_true")
-    parser.add_argument("-n", "--dry-run", action="store_true")
-    parser.add_argument("-s", "--short", action="store_true")
-    parser.add_argument("-y", "--yes", action="store_true")
-    parser.add_argument("--json", action="store_true")
+    parser.add_argument("path", nargs="?", default=".", help="path to scan")
+    parser.add_argument(
+        "--type", dest="types", action="append", help="limit results to type names"
+    )
+    parser.add_argument("-p", "--paths", action="store_true", help="show matched paths")
+    parser.add_argument(
+        "-P",
+        "--absolute-paths",
+        action="store_true",
+        help="show absolute matched paths",
+    )
+    parser.add_argument("-d", "--delete", action="store_true", help="delete matches")
+    parser.add_argument(
+        "-n", "--dry-run", action="store_true", help="show what would be deleted"
+    )
+    parser.add_argument(
+        "-s", "--short", action="store_true", help="use short dry-run output"
+    )
+    parser.add_argument(
+        "-y", "--yes", action="store_true", help="skip the delete prompt"
+    )
+    parser.add_argument("--json", action="store_true", help="emit json output")
     return parser
 
 
@@ -84,63 +97,33 @@ def print_litter(matches: list[Match], selected_types: list[str]) -> None:
     ui.litter(Console(), rows)
 
 
-def print_paths(matches: list[Match], root: Path, selected_types: list[str]) -> None:
+def display_path(match: Match, root: Path, *, absolute: bool) -> str:
+    path = match.path if absolute else match.path.relative_to(root).as_posix()
+    suffix = "/" if match.kind == "dir" else ""
+    return f"{path}{suffix}"
+
+
+def print_paths(
+    matches: list[Match], root: Path, selected_types: list[str], *, absolute: bool
+) -> None:
     rows: list[ui.ScanRow] = []
     for type_name in selected_types:
         for match in matches:
             if match.rule_type != type_name:
                 continue
-            suffix = "/" if match.kind == "dir" else ""
             rows.append(
                 ui.ScanRow(
                     type=type_name,
                     rule=match.rule_value,
-                    path=f"{match.path.relative_to(root).as_posix()}{suffix}",
+                    path=display_path(match, root, absolute=absolute),
                 )
             )
     ui.scan(Console(), rows)
 
 
-def print_absolute_paths(matches: list[Match], selected_types: list[str]) -> None:
-    rows: list[ui.ScanRow] = []
-    for type_name in selected_types:
-        for match in matches:
-            if match.rule_type != type_name:
-                continue
-            suffix = "/" if match.kind == "dir" else ""
-            rows.append(
-                ui.ScanRow(
-                    type=type_name,
-                    rule=match.rule_value,
-                    path=f"{match.path}{suffix}",
-                )
-            )
-    ui.scan(Console(), rows)
-
-
-def print_delete(matches: list[Match], root: Path, selected_types: list[str]) -> None:
-    active = [
-        name
-        for name in selected_types
-        if any(match.rule_type == name for match in matches)
-    ]
-    print("Dry run mode: no files will be deleted")
-    print()
-    print(f"Project directory: {root}")
-    if active:
-        print(f"Types: {'|'.join(active)}")
-    if matches:
-        print("  WOULD DELETE:")
-        for match in matches:
-            suffix = "/" if match.kind == "dir" else ""
-            print(f"    {match.path}{suffix}")
-    else:
-        print("  No junk files found.")
-    print()
-    print("Dry run complete: no files deleted")
-
-
-def print_short(matches: list[Match], root: Path, selected_types: list[str]) -> None:
+def print_short(
+    matches: list[Match], root: Path, selected_types: list[str], *, absolute: bool
+) -> None:
     if not matches:
         return
     active = [
@@ -153,8 +136,7 @@ def print_short(matches: list[Match], root: Path, selected_types: list[str]) -> 
     print("WOULD DELETE:")
     print("-----")
     for match in matches:
-        suffix = "/" if match.kind == "dir" else ""
-        print(f"{match.path}{suffix}")
+        print(display_path(match, root, absolute=absolute))
     print()
     print(f"To delete these items, run: dil -d -y {root}")
 
@@ -258,39 +240,50 @@ def main(argv: list[str] | None = None) -> int:
         with_size=not args.paths and not args.absolute_paths,
     )
     if args.json:
-        absolute = args.absolute_paths or args.delete
+        absolute = args.absolute_paths
         print(json.dumps(payload(matches, root, selected_types, absolute=absolute)))
         return 0
 
-    if args.paths:
-        print_paths(matches, root, selected_types)
-        return 0
-
-    if args.absolute_paths:
-        print_absolute_paths(matches, selected_types)
-        return 0
-
-    if not args.delete:
-        print_litter(matches, selected_types)
-        return 0
-
-    if args.dry_run:
-        if args.short:
-            print_short(matches, root, selected_types)
-            return 0
-        print_absolute_paths(matches, selected_types)
-        return 0
-
-    if not args.yes:
-        if not matches:
-            return 0
-        print_absolute_paths(matches, selected_types)
-        if not confirm():
-            print("Aborted.")
+    if args.delete:
+        if args.dry_run:
+            if args.short:
+                print_short(
+                    matches,
+                    root,
+                    selected_types,
+                    absolute=args.absolute_paths,
+                )
+                return 0
+            print_paths(
+                matches,
+                root,
+                selected_types,
+                absolute=args.absolute_paths,
+            )
             return 0
 
-    prune_matches(matches)
-    print(f"Deleted {len(matches)} item(s)")
+        if not args.yes:
+            if not matches:
+                return 0
+            print_paths(
+                matches,
+                root,
+                selected_types,
+                absolute=args.absolute_paths,
+            )
+            if not confirm():
+                print("Aborted.")
+                return 0
+
+        prune_matches(matches)
+        print(f"Deleted {len(matches)} item(s)")
+        return 0
+
+    if args.paths or args.absolute_paths:
+        print_paths(matches, root, selected_types, absolute=args.absolute_paths)
+        return 0
+
+    print_litter(matches, selected_types)
     return 0
 
 

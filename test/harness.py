@@ -124,6 +124,18 @@ def test_dry(tmp_path: Path, name: str) -> None:
     assert payload["types"] == cast(list[str], expect["types"])
     assert [
         cast(str, row["path"]) for row in cast(list[dict[str, Any]], payload["matches"])
+    ] == cast(list[str], expect["paths"])
+    assert_present(root, cast(list[str], expect["paths"]))
+    assert_kept(root, cast(list[str], expect["keep"]))
+
+
+@pytest.mark.parametrize("name", CASES)
+def test_dry_absolute(tmp_path: Path, name: str) -> None:
+    root, expect = make_case(tmp_path, name)
+    payload = run_json("-d", "-n", "-P", str(root))
+    assert payload["types"] == cast(list[str], expect["types"])
+    assert [
+        cast(str, row["path"]) for row in cast(list[dict[str, Any]], payload["matches"])
     ] == abs_paths(root, cast(list[str], expect["paths"]))
     assert_present(root, cast(list[str], expect["paths"]))
     assert_kept(root, cast(list[str], expect["keep"]))
@@ -142,7 +154,27 @@ def test_prompt_abort(tmp_path: Path) -> None:
     root, expect = make_case(tmp_path, "python")
     result = run("-d", str(root), stdin="\n")
     assert result.returncode == 0
+    assert "__pycache__/" in result.stdout
+    assert str(root / "__pycache__") not in result.stdout
     assert_present(root, cast(list[str], expect["paths"]))
+    assert_kept(root, cast(list[str], expect["keep"]))
+
+
+def test_prompt_abort_absolute(tmp_path: Path) -> None:
+    root, expect = make_case(tmp_path, "python")
+    result = run("-d", "-P", str(root), stdin="\n")
+    assert result.returncode == 0
+    assert "/tmp/" in result.stdout
+    assert "__pycache__" in result.stdout
+    assert_present(root, cast(list[str], expect["paths"]))
+    assert_kept(root, cast(list[str], expect["keep"]))
+
+
+def test_delete_paths_flag(tmp_path: Path) -> None:
+    root, expect = make_case(tmp_path, "common")
+    result = run("-d", "-p", "-y", str(root))
+    assert result.returncode == 0
+    assert_gone(root, cast(list[str], expect["paths"]))
     assert_kept(root, cast(list[str], expect["keep"]))
 
 
@@ -158,7 +190,28 @@ def test_short_dry(tmp_path: Path) -> None:
     root, expect = make_case(tmp_path, "aoife")
     result = run("-d", "-n", "-s", str(root))
     assert result.returncode == 0
+    assert "node_modules/" in result.stdout
+    assert str(root / "node_modules") not in result.stdout
     assert_present(root, cast(list[str], expect["paths"]))
+    assert_kept(root, cast(list[str], expect["keep"]))
+
+
+def test_short_dry_absolute(tmp_path: Path) -> None:
+    root, expect = make_case(tmp_path, "aoife")
+    result = run("-d", "-n", "-s", "-P", str(root))
+    assert result.returncode == 0
+    assert f"{root / 'node_modules'}/" in result.stdout
+    assert_present(root, cast(list[str], expect["paths"]))
+    assert_kept(root, cast(list[str], expect["keep"]))
+
+
+@pytest.mark.parametrize("args", [(), ("-p",), ("-P",), ("-d", "-n")])
+def test_empty_output_message(tmp_path: Path, args: tuple[str, ...]) -> None:
+    root, expect = make_case(tmp_path, "docs")
+    result = run(*args, str(root))
+    assert result.returncode == 0
+    assert result.stdout.strip() == "No files detected to delete."
+    assert result.stderr == ""
     assert_kept(root, cast(list[str], expect["keep"]))
 
 

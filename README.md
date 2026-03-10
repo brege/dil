@@ -79,6 +79,27 @@ dil -d ~/src/aoife
 
 ```
  Type     Rule           Path
+ ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+ node     node_modules   node_modules/
+ ────────────────────────────────────────────
+ python   .ruff_cache    .ruff_cache/
+          .uv-cache      .uv-cache/
+          __pycache__    backend/__pycache__/
+ ────────────────────────────────────────────
+ react    dist           dist/
+ ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+Delete matched items? [y/N] y
+Deleted 5 item(s)
+```
+
+Use `-P` when you want absolute paths in delete and dry-run output.
+
+```bash
+dil -d -P ~/src/aoife
+```
+
+```
+ Type     Rule           Path
  ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
  node     node_modules   /home/user/src/aoife/node_modules/
  ───────────────────────────────────────────────────────────────────────────────
