@@ -4,9 +4,8 @@ from difflib import unified_diff
 import sys
 
 import tomlkit
-from tomlkit.items import Array
 
-from gen import kondo
+from gen import array, build_detect, kondo
 from gen import refs
 from gen import tokei
 from gen.policy import DETECT
@@ -44,15 +43,6 @@ def merge(
     return merged
 
 
-def array(items: list[str]) -> Array:
-    data = tomlkit.array()
-    for item in items:
-        data.append(item)
-    if len(items) > 1:
-        data.multiline(True)
-    return data
-
-
 def render(
     rules: dict[str, dict[str, list[str]]],
     priority: dict[str, int],
@@ -67,18 +57,7 @@ def render(
             table.add("require-ancestor", True)
         table.add("patterns", array(rule["patterns"]))
         if any(rule[field] for field in DETECT):
-            detect_table = tomlkit.table()
-            if rule["detect_files"]:
-                detect_table.add("files", array(rule["detect_files"]))
-            if rule["detect_suffix"]:
-                detect_table.add("suffix", array(rule["detect_suffix"]))
-            if rule["detect_names"]:
-                detect_table.add("names", array(rule["detect_names"]))
-            if rule["detect_env"]:
-                detect_table.add("env", array(rule["detect_env"]))
-            if rule["detect_shebang"]:
-                detect_table.add("shebang", array(rule["detect_shebang"]))
-            table.add("detect", detect_table)
+            table.add("detect", build_detect(rule))
         doc.add(name, table)
     return tomlkit.dumps(doc)
 

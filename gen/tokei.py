@@ -4,8 +4,9 @@ import json
 import sys
 
 import tomlkit
-from tomlkit.items import Array
 
+from gen import build_detect
+from gen.policy import DETECT
 from gen.policy import SOURCE as POLICY
 from gen.policy import load
 
@@ -46,26 +47,20 @@ def merge(
 ) -> dict[str, dict[str, list[str]]]:
     merged: dict[str, dict[str, list[str]]] = {}
     for name, rule in load(policy_path).items():
-        current = {
-            "detect_files": [],
-            "detect_suffix": [],
-            "detect_names": [],
-            "detect_env": [],
-            "detect_shebang": [],
-        }
+        current = {field: [] for field in DETECT}
         for key in rule.tokei:
             for field, items in base.get(key, {}).items():
                 for item in items:
                     if item not in current[field]:
                         current[field].append(item)
         for field, items in rule.add.items():
-            if not field.startswith("detect_"):
+            if field not in DETECT:
                 continue
             for item in items:
                 if item not in current[field]:
                     current[field].append(item)
         for field, items in rule.rm.items():
-            if not field.startswith("detect_"):
+            if field not in DETECT:
                 continue
             current[field] = [item for item in current[field] if item not in items]
         if any(current.values()):
@@ -73,31 +68,11 @@ def merge(
     return dict(sorted(merged.items()))
 
 
-def array(items: list[str]) -> Array:
-    data = tomlkit.array()
-    for item in items:
-        data.append(item)
-    if len(items) > 1:
-        data.multiline(True)
-    return data
-
-
 def render(rules: dict[str, dict[str, list[str]]]) -> str:
     doc = tomlkit.document()
     for name, rule in rules.items():
         table = tomlkit.table()
-        detect = tomlkit.table()
-        if rule["detect_files"]:
-            detect.add("files", array(rule["detect_files"]))
-        if rule["detect_suffix"]:
-            detect.add("suffix", array(rule["detect_suffix"]))
-        if rule["detect_names"]:
-            detect.add("names", array(rule["detect_names"]))
-        if rule["detect_env"]:
-            detect.add("env", array(rule["detect_env"]))
-        if rule["detect_shebang"]:
-            detect.add("shebang", array(rule["detect_shebang"]))
-        table.add("detect", detect)
+        table.add("detect", build_detect(rule))
         doc.add(name, table)
     return tomlkit.dumps(doc)
 

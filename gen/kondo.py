@@ -4,8 +4,8 @@ import re
 import sys
 
 import tomlkit
-from tomlkit.items import Array
 
+from gen import array
 from gen.policy import PRUNE
 from gen.policy import SOURCE as POLICY
 from gen.policy import load
@@ -112,15 +112,6 @@ def merge(
             current[field] = [item for item in current[field] if item not in items]
         merged[name] = current
     return dict(sorted(merged.items()))
-
-
-def array(items: list[str]) -> Array:
-    data = tomlkit.array()
-    for item in items:
-        data.append(item)
-    if len(items) > 1:
-        data.multiline(True)
-    return data
 
 
 def render(rules: dict[str, dict[str, list[str]]]) -> str:
