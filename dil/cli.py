@@ -103,21 +103,26 @@ def display_path(match: Match, root: Path, *, absolute: bool) -> str:
     return f"{path}{suffix}"
 
 
+def active_types(matches: list[Match], selected_types: list[str]) -> list[str]:
+    present = {m.rule_type for m in matches}
+    return [name for name in selected_types if name in present]
+
+
 def print_paths(
     matches: list[Match], root: Path, selected_types: list[str], *, absolute: bool
 ) -> None:
-    rows: list[ui.ScanRow] = []
-    for type_name in selected_types:
-        for match in matches:
-            if match.rule_type != type_name:
-                continue
-            rows.append(
-                ui.ScanRow(
-                    type=type_name,
-                    rule=match.rule_value,
-                    path=display_path(match, root, absolute=absolute),
-                )
-            )
+    by_type: dict[str, list[Match]] = defaultdict(list)
+    for match in matches:
+        by_type[match.rule_type].append(match)
+    rows = [
+        ui.ScanRow(
+            type=type_name,
+            rule=match.rule_value,
+            path=display_path(match, root, absolute=absolute),
+        )
+        for type_name in selected_types
+        for match in by_type.get(type_name, [])
+    ]
     ui.scan(Console(), rows)
 
 
@@ -126,11 +131,7 @@ def print_short(
 ) -> None:
     if not matches:
         return
-    active = [
-        name
-        for name in selected_types
-        if any(match.rule_type == name for match in matches)
-    ]
+    active = active_types(matches, selected_types)
     print(f"PROJECT: {root}")
     print(f"TYPES:   {'|'.join(active)}")
     print("WOULD DELETE:")
@@ -139,14 +140,6 @@ def print_short(
         print(display_path(match, root, absolute=absolute))
     print()
     print(f"To delete these items, run: dil -d -y {root}")
-
-
-def active_types(matches: list[Match], selected_types: list[str]) -> list[str]:
-    return [
-        name
-        for name in selected_types
-        if any(match.rule_type == name for match in matches)
-    ]
 
 
 def payload(

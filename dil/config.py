@@ -206,12 +206,10 @@ def _load_patches(path: Path) -> dict[str, TypePatch]:
     types = raw.get("type")
     if not isinstance(types, dict):
         raise ValueError(f"invalid type table in {path}")
-    type_map = cast(dict[str, object], types)
-
-    loaded: dict[str, TypePatch] = {}
-    for name, value in type_map.items():
-        loaded[name] = _patch_from_table(path, name, value)
-    return loaded
+    return {
+        name: _patch_from_table(path, name, value)
+        for name, value in cast(dict[str, object], types).items()
+    }
 
 
 def load_rules(root: Path) -> dict[str, TypeRules]:
