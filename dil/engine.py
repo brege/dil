@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+from collections.abc import Iterator
 from dataclasses import dataclass
 import fnmatch
 import os
@@ -101,23 +102,26 @@ class Walk:
             return 0
 
     def dir_size(self, path: Path) -> int:
-        total = 0
-        stack = [path]
+        return sum(
+            self.size(item.path)
+            for item, _ in self.traverse(path)
+            if item.kind == "file"
+        )
+
+    def traverse(
+        self, root: Path, *, prune: set[Path] | None = None
+    ) -> Iterator[tuple[WalkItem, str]]:
+        stack: list[tuple[Path, str]] = [(root, "")]
         while stack:
-            current = stack.pop()
+            current, base = stack.pop()
             for item in self.scan(current):
-                if item.kind == "dir":
-                    stack.append(item.path)
-                else:
-                    total += self.size(item.path)
-        return total
+                relative = f"{base}/{item.name}" if base else item.name
+                yield item, relative
+                if item.kind == "dir" and (prune is None or item.path not in prune):
+                    stack.append((item.path, relative))
 
 
 WALK = Walk()
-
-
-def _directory_size(path: Path) -> int:
-    return WALK.dir_size(path)
 
 
 def _read_head(path: Path) -> str:
@@ -131,12 +135,11 @@ def _read_head(path: Path) -> str:
 
 
 def _has_ancestor_suffix(
-    current: Path, root: Path, suffixes: tuple[str, ...], cache: dict[Path, bool]
+    current: Path, root: Path, wanted: frozenset[str], cache: dict[Path, bool]
 ) -> bool:
     if current in cache:
         return cache[current]
 
-    wanted = {suffix.casefold() for suffix in suffixes}
     for item in WALK.scan(current):
         if item.kind != "file":
             continue
@@ -148,7 +151,7 @@ def _has_ancestor_suffix(
         cache[current] = False
         return False
 
-    result = _has_ancestor_suffix(current.parent, root, suffixes, cache)
+    result = _has_ancestor_suffix(current.parent, root, wanted, cache)
     cache[current] = result
     return result
 
@@ -207,17 +210,12 @@ class Detector:
         }
 
     def run(self) -> dict[str, Detect]:
-        stack = [(self.root, "")]
-        while stack:
-            current, base = stack.pop()
-            for item in WALK.scan(current):
-                if item.kind == "dir":
-                    if item.name == ".git":
-                        continue
-                    relative = f"{base}/{item.name}" if base else item.name
-                    if not self.index.stopword(item.name, relative):
-                        stack.append((item.path, relative))
-                    continue
+        prune: set[Path] = set()
+        for item, relative in WALK.traverse(self.root, prune=prune):
+            if item.kind == "dir":
+                if item.name == ".git" or self.index.stopword(item.name, relative):
+                    prune.add(item.path)
+            else:
                 self._add_file(item.path, item.name)
         return self._finish()
 
@@ -245,9 +243,9 @@ class Detector:
         if not first:
             return
 
-        for name in self.index.head_types:
-            rule = self.index.rules[name]
-            count = self.counts[name]
+        for type_name in self.index.head_types:
+            rule = self.index.rules[type_name]
+            count = self.counts[type_name]
             if rule.detect_shebang and first in rule.detect_shebang:
                 count["shebang"] += 1
             if rule.detect_env and first.startswith("#!"):
@@ -300,24 +298,18 @@ class Matcher:
         self.with_size = with_size
         self.matches: list[Match] = []
         self.seen: set[str] = set()
-        self.ancestor: dict[tuple[str, Path], bool] = {}
+        # per-type ancestor-suffix cache: shared across calls to reuse intermediate results
+        self.ancestor: dict[str, dict[Path, bool]] = {}
 
     def run(self) -> list[Match]:
-        stack = [(self.root, "")]
-        while stack:
-            current, base = stack.pop()
-            for item in WALK.scan(current):
-                relative = f"{base}/{item.name}" if base else item.name
-                if item.kind == "dir":
-                    if item.name == ".git":
-                        continue
-                    pruned = self._dir(item.path, item.name, relative)
-                    if not pruned and not self._stopword(item.path, relative):
-                        stack.append((item.path, relative))
-                    continue
+        prune: set[Path] = set()
+        for item, relative in WALK.traverse(self.root, prune=prune):
+            if item.kind == "dir":
+                if item.name == ".git" or self._dir(item.path, item.name, relative):
+                    prune.add(item.path)
+            else:
                 self._file(item.path, item.name, relative)
-
-        self.matches.sort(key=lambda item: item.path.as_posix())
+        self.matches.sort(key=lambda m: m.path.as_posix())
         return self.matches
 
     def _dir(self, path: Path, name: str, relative: str) -> bool:
@@ -343,27 +335,16 @@ class Matcher:
                 self._add(path, "file", type_name, pattern)
                 return
 
-    def _stopword(self, path: Path, relative: str) -> bool:
-        for type_name in self.selected:
-            rule = self.rules[type_name]
-            for pattern in rule.patterns:
-                if not _rule_matches(path.name, relative, pattern, is_dir=True):
-                    continue
-                if self._allowed(path, type_name, True):
-                    return True
-        return False
-
     def _allowed(self, path: Path, type_name: str, is_dir: bool) -> bool:
         rule = self.rules[type_name]
         if not rule.require_ancestor or not rule.detect_suffix:
             return True
         current = path if is_dir else path.parent
-        key = (type_name, current)
-        if key not in self.ancestor:
-            self.ancestor[key] = _has_ancestor_suffix(
-                current, self.root, rule.detect_suffix, {}
-            )
-        return self.ancestor[key]
+        cache = self.ancestor.setdefault(type_name, {})
+        if current not in cache:
+            wanted = frozenset(s.casefold() for s in rule.detect_suffix)
+            cache[current] = _has_ancestor_suffix(current, self.root, wanted, cache)
+        return cache[current]
 
     def _add(self, path: Path, kind: str, rule_type: str, rule_value: str) -> None:
         key = path.as_posix()
@@ -372,14 +353,14 @@ class Matcher:
         self.seen.add(key)
         size_bytes = 0
         if self.with_size:
-            size_bytes = _directory_size(path) if kind == "dir" else path.stat().st_size
+            size_bytes = WALK.dir_size(path) if kind == "dir" else path.stat().st_size
         self.matches.append(Match(path, kind, rule_type, rule_value, size_bytes))
 
 
 class Sizer:
     def __init__(self, root: Path, matches: list[Match]) -> None:
         self.root = root
-        self.matched = {match.path.resolve() for match in matches}
+        self.matched = {match.path for match in matches}
 
     def run(self) -> Summary:
         total_files = 0
@@ -393,8 +374,7 @@ class Sizer:
         while stack:
             current, blocked = stack.pop()
             for item in WALK.scan(current):
-                resolved = item.path.resolve()
-                is_matched = resolved in self.matched
+                is_matched = item.path in self.matched
 
                 if item.kind == "dir":
                     total_dirs += 1
