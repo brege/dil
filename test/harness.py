@@ -269,6 +269,38 @@ def test_local_dil_toml_suppress_detect(tmp_path: Path) -> None:
     assert payload["total"] == {"matches": 0, "size": 0}
 
 
+def test_permission_denied_dirs(tmp_path: Path) -> None:
+    root = tmp_path / "node"
+    root.mkdir()
+    (root / "index.js").write_text("console.log('x')\n", encoding="utf-8")
+
+    node_modules = root / "node_modules"
+    (node_modules / "pkg").mkdir(parents=True)
+    (node_modules / "pkg" / "index.js").write_text("x", encoding="utf-8")
+
+    nested = node_modules / "private"
+    nested.mkdir()
+    (nested / "secret.js").write_text("x", encoding="utf-8")
+
+    blocked = root / "blocked"
+    blocked.mkdir()
+    (blocked / "file.txt").write_text("x", encoding="utf-8")
+
+    nested.chmod(0)
+    blocked.chmod(0)
+    try:
+        payload = run_json(str(root))
+    finally:
+        nested.chmod(0o755)
+        blocked.chmod(0o755)
+
+    assert payload["types"] == ["node"]
+    assert payload["total"] == {"matches": 1, "size": 1}
+    assert [
+        cast(str, row["path"]) for row in cast(list[dict[str, Any]], payload["matches"])
+    ] == ["node_modules/"]
+
+
 def test_rules(tmp_path: Path) -> None:
     rules.ensure()
     litter = kondo.merge(kondo.parse(kondo.SOURCE.read_text()), kondo.POLICY)

@@ -45,6 +45,13 @@ class Sig:
     shebang: tuple[str, ...]
 
 
+@dataclass(frozen=True)
+class WalkItem:
+    path: Path
+    name: str
+    kind: str
+
+
 def _path_matches(path: str, pattern: str) -> bool:
     return fnmatch.fnmatchcase(path.strip("/"), pattern.strip("/"))
 
@@ -64,24 +71,53 @@ def _rule_matches(name: str, relative: str, pattern: str, *, is_dir: bool) -> bo
     return fnmatch.fnmatchcase(name, target)
 
 
-def _directory_size(path: Path) -> int:
-    total = 0
-    stack = [path.as_posix()]
-    while stack:
-        current = stack.pop()
+class Walk:
+    def scan(self, path: Path) -> list[WalkItem]:
         try:
-            with os.scandir(current) as entries:
+            with os.scandir(path) as entries:
+                items: list[WalkItem] = []
                 for entry in entries:
-                    try:
-                        if entry.is_dir(follow_symlinks=False):
-                            stack.append(entry.path)
-                        elif entry.is_file(follow_symlinks=False):
-                            total += entry.stat(follow_symlinks=False).st_size
-                    except FileNotFoundError:
-                        continue
-        except FileNotFoundError:
-            continue
-    return total
+                    item = self._item(entry)
+                    if item is not None:
+                        items.append(item)
+                return items
+        except (FileNotFoundError, PermissionError):
+            return []
+
+    def _item(self, entry: os.DirEntry[str]) -> WalkItem | None:
+        try:
+            if entry.is_dir(follow_symlinks=False):
+                return WalkItem(Path(entry.path), entry.name, "dir")
+            if entry.is_file(follow_symlinks=False):
+                return WalkItem(Path(entry.path), entry.name, "file")
+        except OSError:
+            return None
+        return None
+
+    def size(self, path: Path) -> int:
+        try:
+            return path.stat().st_size
+        except OSError:
+            return 0
+
+    def dir_size(self, path: Path) -> int:
+        total = 0
+        stack = [path]
+        while stack:
+            current = stack.pop()
+            for item in self.scan(current):
+                if item.kind == "dir":
+                    stack.append(item.path)
+                else:
+                    total += self.size(item.path)
+        return total
+
+
+WALK = Walk()
+
+
+def _directory_size(path: Path) -> int:
+    return WALK.dir_size(path)
 
 
 def _read_head(path: Path) -> str:
@@ -101,17 +137,12 @@ def _has_ancestor_suffix(
         return cache[current]
 
     wanted = {suffix.casefold() for suffix in suffixes}
-    try:
-        with os.scandir(current) as entries:
-            for entry in entries:
-                if not entry.is_file(follow_symlinks=False):
-                    continue
-                if any(part.casefold() in wanted for part in Path(entry.name).suffixes):
-                    cache[current] = True
-                    return True
-    except FileNotFoundError:
-        cache[current] = False
-        return False
+    for item in WALK.scan(current):
+        if item.kind != "file":
+            continue
+        if any(part.casefold() in wanted for part in Path(item.name).suffixes):
+            cache[current] = True
+            return True
 
     if current == root:
         cache[current] = False
@@ -179,44 +210,38 @@ class Detector:
         stack = [(self.root, "")]
         while stack:
             current, base = stack.pop()
-            try:
-                with os.scandir(current) as entries:
-                    for entry in entries:
-                        if entry.is_dir(follow_symlinks=False):
-                            if entry.name == ".git":
-                                continue
-                            relative = f"{base}/{entry.name}" if base else entry.name
-                            if not self.index.stopword(entry.name, relative):
-                                stack.append((Path(entry.path), relative))
-                            continue
-                        if not entry.is_file(follow_symlinks=False):
-                            continue
-                        self._add_file(entry)
-            except FileNotFoundError:
-                continue
+            for item in WALK.scan(current):
+                if item.kind == "dir":
+                    if item.name == ".git":
+                        continue
+                    relative = f"{base}/{item.name}" if base else item.name
+                    if not self.index.stopword(item.name, relative):
+                        stack.append((item.path, relative))
+                    continue
+                self._add_file(item.path, item.name)
         return self._finish()
 
-    def _add_file(self, entry: os.DirEntry[str]) -> None:
-        suffixes = {part.casefold() for part in Path(entry.name).suffixes}
-        lowered = entry.name.casefold()
+    def _add_file(self, path: Path, name: str) -> None:
+        suffixes = {part.casefold() for part in Path(name).suffixes}
+        lowered = name.casefold()
 
-        for name in self.index.file_map.get(entry.name, []):
-            self.counts[name]["files"] += 1
-        for name in self.index.name_map.get(lowered, []):
-            self.counts[name]["names"] += 1
+        for type_name in self.index.file_map.get(name, []):
+            self.counts[type_name]["files"] += 1
+        for type_name in self.index.name_map.get(lowered, []):
+            self.counts[type_name]["names"] += 1
 
         seen: set[str] = set()
         for suffix in suffixes:
-            for name in self.index.suffix_map.get(suffix, []):
-                if name in seen:
+            for type_name in self.index.suffix_map.get(suffix, []):
+                if type_name in seen:
                     continue
-                self.counts[name]["suffix"] += 1
-                seen.add(name)
+                self.counts[type_name]["suffix"] += 1
+                seen.add(type_name)
 
         if suffixes or not self.index.head_types:
             return
 
-        first = _read_head(Path(entry.path))
+        first = _read_head(path)
         if not first:
             return
 
@@ -281,22 +306,16 @@ class Matcher:
         stack = [(self.root, "")]
         while stack:
             current, base = stack.pop()
-            try:
-                with os.scandir(current) as entries:
-                    for entry in entries:
-                        relative = f"{base}/{entry.name}" if base else entry.name
-                        if entry.is_dir(follow_symlinks=False):
-                            if entry.name == ".git":
-                                continue
-                            path = Path(entry.path)
-                            pruned = self._dir(path, entry.name, relative)
-                            if not pruned and not self._stopword(path, relative):
-                                stack.append((path, relative))
-                            continue
-                        if entry.is_file(follow_symlinks=False):
-                            self._file(Path(entry.path), entry.name, relative)
-            except FileNotFoundError:
-                continue
+            for item in WALK.scan(current):
+                relative = f"{base}/{item.name}" if base else item.name
+                if item.kind == "dir":
+                    if item.name == ".git":
+                        continue
+                    pruned = self._dir(item.path, item.name, relative)
+                    if not pruned and not self._stopword(item.path, relative):
+                        stack.append((item.path, relative))
+                    continue
+                self._file(item.path, item.name, relative)
 
         self.matches.sort(key=lambda item: item.path.as_posix())
         return self.matches
@@ -373,32 +392,24 @@ class Sizer:
         stack = [(self.root, False)]
         while stack:
             current, blocked = stack.pop()
-            try:
-                with os.scandir(current) as entries:
-                    for entry in entries:
-                        path = Path(entry.path)
-                        resolved = path.resolve()
-                        is_matched = resolved in self.matched
+            for item in WALK.scan(current):
+                resolved = item.path.resolve()
+                is_matched = resolved in self.matched
 
-                        if entry.is_dir(follow_symlinks=False):
-                            total_dirs += 1
-                            child_blocked = blocked or is_matched
-                            if not child_blocked:
-                                clean_dirs += 1
-                            stack.append((path, child_blocked))
-                            continue
+                if item.kind == "dir":
+                    total_dirs += 1
+                    child_blocked = blocked or is_matched
+                    if not child_blocked:
+                        clean_dirs += 1
+                    stack.append((item.path, child_blocked))
+                    continue
 
-                        if not entry.is_file(follow_symlinks=False):
-                            continue
-
-                        size_bytes = entry.stat(follow_symlinks=False).st_size
-                        total_files += 1
-                        total_bytes += size_bytes
-                        if not blocked and not is_matched:
-                            clean_files += 1
-                            clean_bytes += size_bytes
-            except FileNotFoundError:
-                continue
+                size_bytes = WALK.size(item.path)
+                total_files += 1
+                total_bytes += size_bytes
+                if not blocked and not is_matched:
+                    clean_files += 1
+                    clean_bytes += size_bytes
 
         return Summary(
             total_files=total_files,
