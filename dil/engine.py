@@ -102,11 +102,14 @@ class Walk:
             return 0
 
     def dir_size(self, path: Path) -> int:
-        return sum(
-            self.size(item.path)
-            for item, _ in self.traverse(path)
-            if item.kind == "file"
-        )
+        total = 0
+        for dirpath, _dirnames, filenames in os.walk(path):
+            for name in filenames:
+                try:
+                    total += os.path.getsize(os.path.join(dirpath, name))
+                except OSError:
+                    pass
+        return total
 
     def traverse(
         self, root: Path, *, prune: set[Path] | None = None
@@ -399,6 +402,15 @@ class Sizer:
             clean_dirs=clean_dirs,
             clean_bytes=clean_bytes,
         )
+
+
+def scan(
+    root: Path, rules: dict[str, TypeRules], *, with_size: bool = False
+) -> tuple[list[str], list[Match]]:
+    index = Index(rules)
+    selected = list(Detector(root, index).run())
+    matches = Matcher(root, selected, rules, with_size=with_size).run()
+    return selected, matches
 
 
 def detect_types(root: Path, rules: dict[str, TypeRules]) -> dict[str, Detect]:

@@ -9,8 +9,8 @@ from collections import defaultdict
 
 from rich.console import Console
 
-from .config import TypeRules, load_rules
-from .engine import Match, detect_types, find_matches
+from .config import load_rules
+from .engine import Match, find_matches, scan
 from . import ui
 
 
@@ -57,19 +57,6 @@ def require_root(path_value: str) -> Path:
     if root == Path("/"):
         raise SystemExit("error: refusing to operate on /")
     return root
-
-
-def resolve_types(
-    root: Path, raw_types: list[str] | None
-) -> tuple[list[str], dict[str, TypeRules]]:
-    rules = load_rules(root)
-    if not raw_types:
-        return list(detect_types(root, rules)), rules
-    selected = flatten_types(raw_types)
-    unsupported = [name for name in selected if name not in rules]
-    if unsupported:
-        raise SystemExit(f"error: unsupported type(s): {', '.join(unsupported)}")
-    return selected, rules
 
 
 def print_litter(matches: list[Match], selected_types: list[str]) -> None:
@@ -225,13 +212,17 @@ def main(argv: list[str] | None = None) -> int:
         raise SystemExit("error: --json requires --dry-run when used with --delete")
 
     root = require_root(args.path)
-    selected_types, rules = resolve_types(root, args.types)
-    matches = find_matches(
-        root,
-        selected_types,
-        rules,
-        with_size=not args.paths and not args.absolute_paths,
-    )
+    rules = load_rules(root)
+    with_size = not args.paths and not args.absolute_paths
+
+    if args.types:
+        selected_types = flatten_types(args.types)
+        bad = [n for n in selected_types if n not in rules]
+        if bad:
+            raise SystemExit(f"error: unsupported type(s): {', '.join(bad)}")
+        matches = find_matches(root, selected_types, rules, with_size=with_size)
+    else:
+        selected_types, matches = scan(root, rules, with_size=with_size)
     if args.json:
         absolute = args.absolute_paths
         print(json.dumps(payload(matches, root, selected_types, absolute=absolute)))
