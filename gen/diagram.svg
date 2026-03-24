@@ -41,61 +41,69 @@
   <rect x="1" y="1" width="798" height="638" rx="8" ry="8"
         fill="none" stroke="var(--border)" stroke-width="2"/>
 
-  <!-- top box -->
-  <rect x="44" y="44" width="712" height="196" rx="6" ry="6"
+  <!-- top box: repository -->
+  <rect x="44" y="60" width="712" height="160" rx="6" ry="6"
         fill="var(--green-fill)" stroke="var(--green-stroke)" stroke-width="2"/>
 
-  <!-- top box files -->
-  <g font-family="monospace" font-size="15" fill="var(--ink)">
-    <text x="60"  y="130">☐ README.md</text>
-    <text x="220" y="130">☐ main.py</text>
-    <text x="360" y="130">☐ config.example.yaml</text>
-    <text x="580" y="130">☐ uv.lock</text>
-  </g>
-
-  <!-- top box caption -->
-  <text x="400" y="255" text-anchor="middle"
-        font-family="sans-serif" font-size="13" font-weight="bold"
+  <!-- repository header -->
+  <text x="400" y="46" text-anchor="middle"
+        font-family="ui-sans-serif, system-ui, sans-serif" font-size="16" font-weight="bold"
         fill="var(--green-cap)">repository</text>
 
+  <!-- top box files -->
+  <g font-family="ui-monospace, SFMono-Regular, monospace" font-size="15" fill="var(--ink)">
+    <text x="100"  y="148">README.md</text>
+    <text x="270" y="148">main.py</text>
+    <text x="420" y="148">config.example.yaml</text>
+    <text x="650" y="148">uv.lock</text>
+  </g>
+
+  <!-- .gitignore header -->
+  <text x="210" y="288" text-anchor="middle"
+        font-family="ui-sans-serif, system-ui, sans-serif" font-size="16" font-weight="bold"
+        fill="var(--blue-cap)">.gitignore</text>
+
   <!-- blue (left) box -->
-  <rect x="100" y="270" width="360" height="280" rx="6" ry="6"
+  <rect x="100" y="296" width="360" height="240" rx="6" ry="6"
         fill="var(--blue-fill)" stroke="var(--blue-stroke)" stroke-width="2"/>
 
+  <!-- user data header -->
+  <text x="400" y="328" text-anchor="middle"
+        font-family="ui-sans-serif, system-ui, sans-serif" font-size="16" font-weight="bold"
+        fill="var(--purple-cap)">user data</text>
+
+  <!-- untracked header -->
+  <text x="560" y="328" text-anchor="middle"
+        font-family="ui-sans-serif, system-ui, sans-serif" font-size="16" font-weight="bold"
+        fill="var(--red-cap)">untracked</text>
+
   <!-- red (right) box -->
-  <rect x="300" y="310" width="360" height="200" rx="6" ry="6"
+  <rect x="300" y="336" width="360" height="200" rx="6" ry="6"
         fill="var(--red-fill)" stroke="var(--red-stroke)" stroke-width="2"/>
 
-  <!-- left-only files -->
-  <g font-family="monospace" font-size="14" fill="var(--ink)">
-    <text x="120" y="340">☐ __pycache__</text>
-    <text x="120" y="375">☐ .uv-cache</text>
-    <text x="120" y="410">☐ .ruff_cache</text>
+  <!-- left-only files (gitignored, disposable) -->
+  <g font-family="ui-monospace, SFMono-Regular, monospace" font-size="15" fill="var(--ink)">
+    <text x="120" y="370">__pycache__/</text>
+    <text x="120" y="400">.uv-cache/</text>
+    <text x="120" y="430">.ruff_cache/</text>
   </g>
 
-  <!-- intersection files -->
-  <g font-family="monospace" font-size="14" fill="var(--ink)">
-    <text x="315" y="390">☐ data/</text>
-    <text x="315" y="425">☐ config.yaml</text>
+  <!-- intersection files (user data in gitignore overlap) -->
+  <g font-family="ui-monospace, SFMono-Regular, monospace" font-size="15" fill="var(--ink)">
+    <text x="330" y="400">data/</text>
+    <text x="330" y="430">config.yaml</text>
   </g>
 
-  <!-- right-only files -->
-  <g font-family="monospace" font-size="14" fill="var(--ink)">
-    <text x="475" y="340">☐ CLAUDE.md</text>
-    <text x="475" y="375">☐ scratch.py</text>
-    <text x="475" y="410">☐ notes.txt</text>
-  </g>
-
-  <!-- captions -->
-  <g font-family="sans-serif" font-size="13" font-weight="bold">
-    <text x="110" y="565" text-anchor="start"  fill="var(--blue-cap)"  >.gitignore</text>
-    <text x="380" y="525" text-anchor="middle" fill="var(--purple-cap)">user data</text>
-    <text x="650" y="525" text-anchor="end"    fill="var(--red-cap)"   >untracked</text>
+  <!-- right-only files (untracked, not gitignored) -->
+  <g font-family="ui-monospace, SFMono-Regular, monospace" font-size="15" fill="var(--ink)">
+    <text x="490" y="370">CLAUDE.md</text>
+    <text x="490" y="400">scratch.py</text>
+    <text x="490" y="430">notes.txt</text>
   </g>
 
   <!-- world caption -->
-  <text x="400" y="602" text-anchor="middle"
-        font-family="sans-serif" font-size="20" font-weight="bold"
+  <text x="400" y="600" text-anchor="middle"
+        font-family="ui-sans-serif, system-ui, sans-serif" font-size="20" font-weight="bold"
         fill="var(--ink-strong)">py-project/</text>
 
 </svg>

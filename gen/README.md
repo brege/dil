@@ -1,8 +1,6 @@
-# dil.toml Generator And Policy
+# dil.toml
 
-This directory owns the path from upstream sources to generated runtime rules.
-
-The moving parts are:
+The moving parts generating the stock `dil.toml` are:
 
 - `gen/kondo.py` for upstream Kondo artifact rules
 - `gen/tokei.py` for upstream Tokei detector metadata
