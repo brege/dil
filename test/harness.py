@@ -217,6 +217,40 @@ def test_empty_output_message(tmp_path: Path, args: tuple[str, ...]) -> None:
     assert_kept(root, cast(list[str], expect["keep"]))
 
 
+def test_type_short_flag(tmp_path: Path) -> None:
+    root, expect = make_case(tmp_path, "python")
+    payload = run_json("-t", "python", str(root))
+
+    assert payload["types"] == ["python"]
+    assert [
+        cast(str, row["path"]) for row in cast(list[dict[str, Any]], payload["matches"])
+    ] == cast(list[str], expect["paths"])
+
+
+def test_multiple_type_args_append_and_split(tmp_path: Path) -> None:
+    root, _ = make_case(tmp_path, "aoife")
+    payload = run_json("-t", "python,react", "-t", "node", str(root))
+
+    assert payload["types"] == ["python", "react", "node"]
+    assert [
+        cast(str, row["path"]) for row in cast(list[dict[str, Any]], payload["matches"])
+    ] == [
+        ".ruff_cache/",
+        ".uv-cache/",
+        "backend/__pycache__/",
+        "dist/",
+        "node_modules/",
+    ]
+
+
+def test_pipe_delimited_type_is_rejected(tmp_path: Path) -> None:
+    root, _ = make_case(tmp_path, "aoife")
+    result = run("-t", "python|react", str(root))
+
+    assert result.returncode != 0
+    assert "unsupported type(s): python|react" in result.stderr
+
+
 def test_repo_dil_toml_loads(tmp_path: Path, monkeypatch: pytest.MonkeyPatch) -> None:
     monkeypatch.setenv("HOME", str(tmp_path / "home"))
     ruleset = load_rules(ROOT)

@@ -20,7 +20,11 @@ def build_parser() -> argparse.ArgumentParser:
     )
     parser.add_argument("path", nargs="?", default=".", help="path to scan")
     parser.add_argument(
-        "--type", dest="types", action="append", help="limit results to type names"
+        "-t",
+        "--type",
+        dest="types",
+        action="append",
+        help="limit results to comma-separated type names",
     )
     parser.add_argument("-p", "--paths", action="store_true", help="show matched paths")
     parser.add_argument(
@@ -46,7 +50,7 @@ def build_parser() -> argparse.ArgumentParser:
 def flatten_types(values: list[str]) -> list[str]:
     types: list[str] = []
     for raw in values:
-        types.extend(part for part in raw.split("|") if part)
+        types.extend(part for part in raw.split(",") if part)
     return types
 
 
