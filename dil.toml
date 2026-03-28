@@ -49,6 +49,22 @@ tokei = ["Elixir"]
 kondo = ["godot4"]
 tokei = ["GdScript", "CSharp"]
 
+[type.hugo]
+kondo = []
+tokei = []
+
+[type.hugo.add]
+patterns = [
+  "public/",
+  "resources/_gen/",
+]
+detect_files = [
+  ".hugo_build.lock",
+  "hugo.toml",
+  "hugo.yaml",
+  "hugo.json",
+]
+
 [type.gradle]
 kondo = ["gradle"]
 tokei = ["Groovy", "Kotlin", "Java"]

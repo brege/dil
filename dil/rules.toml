@@ -111,6 +111,20 @@ suffix = [
 ]
 env = ["groovy"]
 
+[hugo]
+patterns = [
+    "public/",
+    "resources/_gen/",
+]
+
+[hugo.detect]
+files = [
+    ".hugo_build.lock",
+    "hugo.toml",
+    "hugo.yaml",
+    "hugo.json",
+]
+
 [jupyter]
 patterns = [".ipynb_checkpoints/"]
 

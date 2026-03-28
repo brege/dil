@@ -157,6 +157,43 @@ projects:
       total:
         matches: 1
         size: 4
+  hugo:
+    description: |-
+      Hugo static site with rendered output and asset cache.
+      Verifies that public/ and resources/_gen/ are detected while
+      source content, templates, and config remain untouched.
+    entries:
+      - file: hugo.toml
+        text: "baseURL = 'https://example.org/'\n"
+      - file: content/post.md
+        text: "---\ntitle: hello\n---\n"
+      - file: layouts/index.html
+        text: "{{ .Title }}\n"
+      - dir: public
+      - file: public/index.html
+        bytes: 20
+      - file: public/sitemap.xml
+        bytes: 8
+      - dir: resources/_gen/images
+      - file: resources/_gen/images/thumb.jpg
+        bytes: 15
+    expect:
+      types: [hugo]
+      paths:
+        - public/
+        - resources/_gen/
+      keep: [content/post.md, hugo.toml, layouts/index.html]
+      rules:
+        hugo:
+          public/:
+            matches: 1
+            size: 28
+          resources/_gen/:
+            matches: 1
+            size: 15
+      total:
+        matches: 2
+        size: 43
   docs:
     description: |-
       Non-project documentation tree.

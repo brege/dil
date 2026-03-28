@@ -30,7 +30,7 @@ cd ~/src/aoife
 dil
 ```
 
-You can equivalently do  `dil --type "python|node|react" ~/src/aoife`.
+You can equivalently do `dil -t python,node,react ~/src/aoife`.
 
 ```
  Type     Rule           Matches       Size
@@ -132,9 +132,10 @@ Here's what's available in the world today.
 
 #### Implementation
 
-The approach is to **map** the overlap between Tokei's `languages.json` and Kondo's `lib.rs`, resolve conflicts, normalize the keys, and supplement the result with a manually curated policy file: `dil.toml`.
+The approach is to **map** the overlap between Tokei's `languages.json` and Kondo's `lib.rs`, resolve conflicts, normalize the keys, and supplement the result with manually curated policy patches.
 
-This provides a global `dil.toml` file that can be overridden or augmented for a specific project's needs.
+The built-in rules can be patched by `~/.config/dil/config.toml` and by a
+project-local `dil.toml`.
 
 ## Contributing
 
