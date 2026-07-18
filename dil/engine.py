@@ -19,16 +19,6 @@ class Match:
 
 
 @dataclass(frozen=True)
-class Summary:
-    total_files: int
-    total_dirs: int
-    total_bytes: int
-    clean_files: int
-    clean_dirs: int
-    clean_bytes: int
-
-
-@dataclass(frozen=True)
 class Detect:
     files: int
     suffix: int
@@ -74,41 +64,26 @@ def _rule_matches(name: str, relative: str, pattern: str, *, is_dir: bool) -> bo
 
 class Walk:
     def scan(self, path: Path) -> list[WalkItem]:
-        try:
-            with os.scandir(path) as entries:
-                items: list[WalkItem] = []
-                for entry in entries:
-                    item = self._item(entry)
-                    if item is not None:
-                        items.append(item)
-                return items
-        except (FileNotFoundError, PermissionError):
-            return []
+        with os.scandir(path) as entries:
+            items: list[WalkItem] = []
+            for entry in entries:
+                item = self._item(entry)
+                if item is not None:
+                    items.append(item)
+            return items
 
     def _item(self, entry: os.DirEntry[str]) -> WalkItem | None:
-        try:
-            if entry.is_dir(follow_symlinks=False):
-                return WalkItem(Path(entry.path), entry.name, "dir")
-            if entry.is_file(follow_symlinks=False):
-                return WalkItem(Path(entry.path), entry.name, "file")
-        except OSError:
-            return None
+        if entry.is_dir(follow_symlinks=False):
+            return WalkItem(Path(entry.path), entry.name, "dir")
+        if entry.is_file(follow_symlinks=False):
+            return WalkItem(Path(entry.path), entry.name, "file")
         return None
-
-    def size(self, path: Path) -> int:
-        try:
-            return path.stat().st_size
-        except OSError:
-            return 0
 
     def dir_size(self, path: Path) -> int:
         total = 0
-        for dirpath, _dirnames, filenames in os.walk(path):
+        for dirpath, _dirnames, filenames in os.walk(path, onerror=_raise_walk_error):
             for name in filenames:
-                try:
-                    total += os.path.getsize(os.path.join(dirpath, name))
-                except OSError:
-                    pass
+                total += os.path.getsize(os.path.join(dirpath, name))
         return total
 
     def traverse(
@@ -127,12 +102,13 @@ class Walk:
 WALK = Walk()
 
 
+def _raise_walk_error(error: OSError) -> None:
+    raise error
+
+
 def _read_head(path: Path) -> str:
-    try:
-        with path.open("rb") as handle:
-            head = handle.read(128)
-    except OSError:
-        return ""
+    with path.open("rb") as handle:
+        head = handle.read(128)
     line = head.splitlines()[0] if head else b""
     return line.decode("utf-8", errors="ignore").strip()
 
@@ -360,50 +336,6 @@ class Matcher:
         self.matches.append(Match(path, kind, rule_type, rule_value, size_bytes))
 
 
-class Sizer:
-    def __init__(self, root: Path, matches: list[Match]) -> None:
-        self.root = root
-        self.matched = {match.path for match in matches}
-
-    def run(self) -> Summary:
-        total_files = 0
-        total_dirs = 1
-        total_bytes = 0
-        clean_files = 0
-        clean_dirs = 1
-        clean_bytes = 0
-
-        stack = [(self.root, False)]
-        while stack:
-            current, blocked = stack.pop()
-            for item in WALK.scan(current):
-                is_matched = item.path in self.matched
-
-                if item.kind == "dir":
-                    total_dirs += 1
-                    child_blocked = blocked or is_matched
-                    if not child_blocked:
-                        clean_dirs += 1
-                    stack.append((item.path, child_blocked))
-                    continue
-
-                size_bytes = WALK.size(item.path)
-                total_files += 1
-                total_bytes += size_bytes
-                if not blocked and not is_matched:
-                    clean_files += 1
-                    clean_bytes += size_bytes
-
-        return Summary(
-            total_files=total_files,
-            total_dirs=total_dirs,
-            total_bytes=total_bytes,
-            clean_files=clean_files,
-            clean_dirs=clean_dirs,
-            clean_bytes=clean_bytes,
-        )
-
-
 def scan(
     root: Path, rules: dict[str, TypeRules], *, with_size: bool = False
 ) -> tuple[list[str], list[Match]]:
@@ -413,10 +345,6 @@ def scan(
     return selected, matches
 
 
-def detect_types(root: Path, rules: dict[str, TypeRules]) -> dict[str, Detect]:
-    return Detector(root, Index(rules)).run()
-
-
 def find_matches(
     root: Path,
     selected_types: list[str],
@@ -424,7 +352,3 @@ def find_matches(
     with_size: bool = False,
 ) -> list[Match]:
     return Matcher(root, selected_types, available_rules, with_size=with_size).run()
-
-
-def summarize(root: Path, matches: list[Match]) -> Summary:
-    return Sizer(root, matches).run()

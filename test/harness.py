@@ -1,8 +1,8 @@
 from __future__ import annotations
 
 import json
-import shutil
 import subprocess
+import sys
 from pathlib import Path
 from typing import Any, cast
 import tomllib
@@ -19,7 +19,7 @@ from . import setup
 
 
 ROOT = Path(__file__).resolve().parents[1]
-PYTHON = shutil.which("python3") or "python3"
+PYTHON = sys.executable
 CASES = tuple(cast(dict[str, Any], setup.load()["projects"]))
 HOME = Path("/tmp/dil-test-home")
 
@@ -251,6 +251,16 @@ def test_pipe_delimited_type_is_rejected(tmp_path: Path) -> None:
     assert "unsupported type(s): python|react" in result.stderr
 
 
+def test_file_root_is_rejected(tmp_path: Path) -> None:
+    target = tmp_path / "project.toml"
+    target.write_text("name = 'project'\n", encoding="utf-8")
+
+    result = run(str(target))
+
+    assert result.returncode != 0
+    assert result.stderr.strip() == f"error: path is not a directory: {target}"
+
+
 def test_repo_dil_toml_loads(tmp_path: Path, monkeypatch: pytest.MonkeyPatch) -> None:
     monkeypatch.setenv("HOME", str(tmp_path / "home"))
     ruleset = load_rules(ROOT)
@@ -258,6 +268,23 @@ def test_repo_dil_toml_loads(tmp_path: Path, monkeypatch: pytest.MonkeyPatch) ->
     assert "python" in ruleset
     assert ruleset["python"].patterns.count(".uv-cache/") == 1
     assert ruleset["node"].detect_env.count("node") == 1
+
+
+@pytest.mark.parametrize(
+    "config",
+    [
+        "[type.python]\nunexpected = true\n",
+        "[type.python.add]\nunexpected = []\n",
+    ],
+)
+def test_unknown_config_key_is_rejected(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch, config: str
+) -> None:
+    monkeypatch.setenv("HOME", str(tmp_path / "home"))
+    (tmp_path / "dil.toml").write_text(config, encoding="utf-8")
+
+    with pytest.raises(ValueError, match="unexpected"):
+        load_rules(tmp_path)
 
 
 def test_local_dil_toml_add_and_rm(tmp_path: Path) -> None:
@@ -323,16 +350,13 @@ def test_permission_denied_dirs(tmp_path: Path) -> None:
     nested.chmod(0)
     blocked.chmod(0)
     try:
-        payload = run_json(str(root))
+        result = run("--json", str(root))
     finally:
         nested.chmod(0o755)
         blocked.chmod(0o755)
 
-    assert payload["types"] == ["node"]
-    assert payload["total"] == {"matches": 1, "size": 1}
-    assert [
-        cast(str, row["path"]) for row in cast(list[dict[str, Any]], payload["matches"])
-    ] == ["node_modules/"]
+    assert result.returncode != 0
+    assert "PermissionError" in result.stderr
 
 
 def test_rules(tmp_path: Path) -> None:
@@ -385,3 +409,17 @@ def test_ensure(monkeypatch: pytest.MonkeyPatch, tmp_path: Path) -> None:
 
     assert rules.ensure() is True
     assert calls == [["kondo", "tokei"]]
+
+
+def test_rule_update_check_does_not_write(tmp_path: Path) -> None:
+    target = tmp_path / "rules.toml"
+    target.write_text("old\n", encoding="utf-8")
+
+    delta = rules.update(target, "new\n", check=True)
+
+    assert delta
+    assert target.read_text(encoding="utf-8") == "old\n"
+
+    rules.update(target, "new\n", check=False)
+
+    assert target.read_text(encoding="utf-8") == "new\n"

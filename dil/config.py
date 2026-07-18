@@ -8,16 +8,6 @@ from typing import cast
 from pydantic import BaseModel, ConfigDict, Field, ValidationError
 
 
-POLICY_FIELDS = (
-    "patterns",
-    "detect_files",
-    "detect_suffix",
-    "detect_names",
-    "detect_env",
-    "detect_shebang",
-)
-
-
 class DetectRules(BaseModel):
     model_config = ConfigDict(extra="forbid", frozen=True)
 
@@ -94,6 +84,8 @@ class TypePatch(BaseModel):
 
     priority: int | None = None
     require_ancestor: bool | None = Field(None, alias="require-ancestor")
+    kondo: tuple[str, ...] = ()
+    tokei: tuple[str, ...] = ()
     add: PatchRules = Field(default_factory=PatchRules)
     rm: PatchRules = Field(default_factory=PatchRules)
 
@@ -165,40 +157,13 @@ def _load_builtin() -> dict[str, TypeRules]:
     return loaded
 
 
-def _policy_table(value: object, source: str, field: str) -> dict[str, tuple[str, ...]]:
-    if value is None:
-        return {name: () for name in POLICY_FIELDS}
-    if not isinstance(value, dict):
-        raise ValueError(f"{source}: invalid {field} table")
-    table = cast(dict[str, object], value)
-    loaded: dict[str, tuple[str, ...]] = {}
-    for name in POLICY_FIELDS:
-        items = table.get(name, [])
-        if not isinstance(items, list) or any(
-            not isinstance(item, str) for item in items
-        ):
-            raise ValueError(f"{source}: {field}.{name} must be a list of strings")
-        loaded[name] = tuple(cast(list[str], items))
-    return loaded
-
-
 def _patch_from_table(path: Path, name: str, value: object) -> TypePatch:
     if not isinstance(value, dict):
         raise ValueError(f"invalid type entry in {path}: {name}")
-    table = cast(dict[str, object], value)
-    add = _policy_table(table.get("add"), str(path), f"{name}.add")
-    removed = _policy_table(table.get("rm"), str(path), f"{name}.rm")
     try:
-        return TypePatch.model_validate(
-            {
-                "priority": table.get("priority"),
-                "require-ancestor": table.get("require-ancestor"),
-                "add": add,
-                "rm": removed,
-            }
-        )
+        return TypePatch.model_validate(value)
     except ValidationError as err:
-        raise ValueError(f"{path}: invalid {name} rules") from err
+        raise ValueError(f"{path}: invalid {name} rules: {err}") from err
 
 
 def _load_patches(path: Path) -> dict[str, TypePatch]:

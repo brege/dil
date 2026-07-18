@@ -43,7 +43,7 @@ include = [
 ]
 
 [tool.hatch.build.targets.wheel]
-packages = ["dil", "gen"]
+packages = ["dil"]
 
 [tool.ruff]
 target-version = "py311"

@@ -58,6 +58,8 @@ def require_root(path_value: str) -> Path:
     root = Path(path_value).expanduser().resolve()
     if not root.exists():
         raise SystemExit(f"error: path does not exist: {root}")
+    if not root.is_dir():
+        raise SystemExit(f"error: path is not a directory: {root}")
     if root == Path("/"):
         raise SystemExit("error: refusing to operate on /")
     return root

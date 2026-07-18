@@ -8,28 +8,31 @@ jobs:
   test:
     runs-on: ubuntu-latest
     timeout-minutes: 10
+    strategy:
+      matrix:
+        python-version: ["3.11", "3.14"]
     env:
       UV_CACHE_DIR: .uv-cache
     steps:
       - name: Checkout
-        uses: actions/checkout@v4
+        uses: actions/checkout@v7
 
       - name: Set up Python
-        uses: actions/setup-python@v5
+        uses: actions/setup-python@v6
         with:
-          python-version: "3.12"
+          python-version: ${{ matrix.python-version }}
 
       - name: Set up uv
-        uses: astral-sh/setup-uv@v3
+        uses: astral-sh/setup-uv@v8
 
       - name: Sync dependencies
-        run: uv sync --all-groups
+        run: uv sync --all-groups --locked
 
       - name: Verify generated rules
-        run: uv run python gen/rules.py
+        run: uv run --frozen python gen/rules.py --check
 
       - name: Run tests
-        run: uv run pytest
+        run: uv run --frozen pytest
 
       - name: Run pre-commit
-        run: uv run pre-commit run --all-files
+        run: uv run --frozen pre-commit run --all-files

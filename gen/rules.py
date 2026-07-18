@@ -25,6 +25,7 @@ def build() -> argparse.ArgumentParser:
     parser.add_argument("--kondo", type=Path, default=KONDO)
     parser.add_argument("--tokei", type=Path, default=TOKEI)
     parser.add_argument("--policy", type=Path, default=POLICY)
+    parser.add_argument("--check", action="store_true")
     return parser
 
 
@@ -75,6 +76,14 @@ def diff(path: Path, text: str) -> str:
     return "".join(lines)
 
 
+def update(path: Path, text: str, *, check: bool) -> str:
+    delta = diff(path, text)
+    if delta and not check:
+        path.parent.mkdir(parents=True, exist_ok=True)
+        path.write_text(text)
+    return delta
+
+
 def ensure() -> bool:
     missing: list[str] = []
     if not KONDO.is_file():
@@ -95,14 +104,16 @@ def main() -> int:
     priority = {name: rule.priority for name, rule in policy.items()}
     require_ancestor = {name: rule.require_ancestor for name, rule in policy.items()}
     text = render(merge(litter, detect), priority, require_ancestor)
-    delta = diff(TARGET, text)
+    delta = update(TARGET, text, check=args.check)
     if not delta:
         if refreshed:
             print("refreshed data cache")
         print(f"{TARGET.relative_to(ROOT)} unchanged")
         return 0
-    TARGET.parent.mkdir(parents=True, exist_ok=True)
-    TARGET.write_text(text)
+    if args.check:
+        print(f"{TARGET.relative_to(ROOT)} is out of date")
+        sys.stdout.write(delta)
+        return 1
     if refreshed:
         print("refreshed data cache")
     print(f"updated {TARGET.relative_to(ROOT)}")
