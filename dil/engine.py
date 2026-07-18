@@ -83,7 +83,11 @@ class Walk:
         total = 0
         for dirpath, _dirnames, filenames in os.walk(path, onerror=_raise_walk_error):
             for name in filenames:
-                total += os.path.getsize(os.path.join(dirpath, name))
+                try:
+                    total += os.path.getsize(os.path.join(dirpath, name))
+                except FileNotFoundError:
+                    # Live caches can remove entries between enumeration and stat.
+                    continue
         return total
 
     def traverse(

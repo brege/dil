@@ -10,6 +10,7 @@ import tomllib
 import pytest
 
 from dil.config import load_rules
+from dil.engine import Walk
 from gen import kondo
 from gen.policy import load as load_policy
 from gen import rules
@@ -357,6 +358,21 @@ def test_permission_denied_dirs(tmp_path: Path) -> None:
 
     assert result.returncode != 0
     assert "PermissionError" in result.stderr
+
+
+def test_vanished_file_during_sizing_is_ignored(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    target = tmp_path / "cache"
+    target.mkdir()
+    (target / "entry").write_text("data", encoding="utf-8")
+
+    def missing(_path: str) -> int:
+        raise FileNotFoundError
+
+    monkeypatch.setattr("dil.engine.os.path.getsize", missing)
+
+    assert Walk().dir_size(target) == 0
 
 
 def test_rules(tmp_path: Path) -> None:
